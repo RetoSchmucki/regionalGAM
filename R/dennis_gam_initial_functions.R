@@ -488,6 +488,9 @@ for (y in sample_year) {
         function(x) 1 - sum(x, na.rm = T))
     names(pro_count_agg) <- c("SITE", "PROP_PHENO_SAMPLED")
 
+    # remove samples outside the monitoring window
+    sp_data_site$COUNT[sp_data_site$nm==0] <- NA
+
     # Compute the regional gam index
     glm_obj_site <- glm(COUNT ~ factor(SITE) + offset(log(nm)) - 1, data = sp_data_site,
         family = quasipoisson(link = "log"), control = list(maxit = 100))
@@ -557,6 +560,9 @@ for (y in sample_year) {
     pro_count_agg <- aggregate(pro_missing_count$NM, by = list(pro_missing_count$SITE),
         function(x) 1 - sum(x, na.rm = T))
     names(pro_count_agg) <- c("SITE", "PROP_PHENO_SAMPLED")
+
+    # remove samples outside the monitoring window
+    sp_data_site$COUNT[sp_data_site$nm==0] <- NA
 
     # Compute the regional gam index
     glm_obj_site <- glm(COUNT ~ factor(SITE) + offset(log(nm)) - 1, data = sp_data_site,
