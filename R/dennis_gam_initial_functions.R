@@ -170,15 +170,11 @@ flight_curve <- function(your_dataset) {
    if (x == 'N') {stop("flight curve can not be computed without the mgcv package, sorry")}
  }
 
-your_dataset$julian_d <- strptime(paste(your_dataset$visit_day, your_dataset$visit_month,
-    your_dataset$visit_year, sep = "/"), "%d/%m/%Y")$yday + 1
+your_dataset$DAYNO <- strptime(paste(your_dataset$DAY, your_dataset$MONTH,
+    your_dataset$YEAR, sep = "/"), "%d/%m/%Y")$yday + 1
 
-dataset <- your_dataset[, c("species", "transect_id", "visit_year", "visit_month",
-    "visit_day", "julian_d", "sp_count")]
-
-# Rename columns to standard names
-names(dataset) = c("SPECIES", "SITE", "YEAR", "MONTH", "DAY", "DAYNO",
-    "COUNT")
+dataset <- your_dataset[, c("SPECIES", "SITE", "YEAR", "MONTH",
+    "DAY", "DAYNO", "COUNT")]
 
 sample_year <- unique(dataset$YEAR)
 sample_year <- sample_year[order(sample_year)]
@@ -446,15 +442,11 @@ return(flight_pheno)
 
 abundance_index <- function(your_dataset,flight_pheno) {
 
-your_dataset$julian_d <- strptime(paste(your_dataset$visit_day, your_dataset$visit_month,
-    your_dataset$visit_year, sep = "/"), "%d/%m/%Y")$yday + 1
+your_dataset$julian_d <- strptime(paste(your_dataset$DAY, your_dataset$MONTH,
+    your_dataset$YEAR, sep = "/"), "%d/%m/%Y")$yday + 1
 
-dataset <- your_dataset[, c("species", "transect_id", "visit_year", "visit_month",
-    "visit_day", "julian_d", "sp_count")]
-
-# Rename columns to standard names
-names(dataset) = c("SPECIES", "SITE", "YEAR", "MONTH", "DAY", "DAYNO",
-    "COUNT")
+dataset <- your_dataset[, c("SPECIES", "SITE", "YEAR", "MONTH",
+    "DAY", "DAYNO", "COUNT")]
 
 sample_year <- unique(dataset$YEAR)
 sample_year <- sample_year[order(sample_year)]
