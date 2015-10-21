@@ -442,7 +442,7 @@ return(flight_pheno)
 
 abundance_index <- function(your_dataset,flight_pheno) {
 
-your_dataset$julian_d <- strptime(paste(your_dataset$DAY, your_dataset$MONTH,
+your_dataset$DAYNO <- strptime(paste(your_dataset$DAY, your_dataset$MONTH,
     your_dataset$YEAR, sep = "/"), "%d/%m/%Y")$yday + 1
 
 dataset <- your_dataset[, c("SPECIES", "SITE", "YEAR", "MONTH",
