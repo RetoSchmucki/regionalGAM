@@ -197,7 +197,7 @@ for (y in sample_year) {
 
     sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
     print(paste("Fitting the GAM for",as.character(sp_data_all$SPECIES[1]),"at year",y,":",Sys.time()))
-    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -
+    gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -
         1, data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
 
     # Give a second try if the GAM does not converge the first time
@@ -214,7 +214,7 @@ for (y in sample_year) {
 
         sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
         print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,":",Sys.time(),"second try"))
-        gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -
+        gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -
             1, data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
 
         if (class(gam_obj_site)[1] == "try-error") {
@@ -317,7 +317,7 @@ for (y in sample_year) {
 
     sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
     print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,":",Sys.time()))
-    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -
+    gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -
         1, data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
 
     # Give a second try if the GAM does not converge the first time
@@ -335,7 +335,7 @@ for (y in sample_year) {
 
         sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
         print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,":",Sys.time(),"second try"))
-        gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -
+        gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -
             1, data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
 
         if (class(gam_obj_site)[1] == "try-error") {
