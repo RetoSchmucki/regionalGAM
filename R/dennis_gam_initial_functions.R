@@ -190,14 +190,12 @@ for (y in sample_year) {
     sp_data_all <- year_day_func(dataset_y)
 
     if (nsite > 200) {
-        sp_data_all <- sp_data_all[sp_data_all$SITE %in% unique(dataset_y$SITE)[sample(1:nsite,
-            200, replace = F)], ]
-    } else {
+        sp_data_all <- sp_data_all[as.character(sp_data_all$SITE) %in% as.character(unique(dataset_y$SITE)[sample(1:nsite,
+            200, replace = F)]), ]
         sp_data_all <- sp_data_all
     }
 
-    sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) +
-        1
+    sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
     print(paste("Fitting the GAM for",as.character(sp_data_all$SPECIES[1]),"at year",y,":",Sys.time()))
     gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -
         1, data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
@@ -209,14 +207,12 @@ for (y in sample_year) {
         sp_data_all <- year_day_func(dataset_y)
 
         if (nsite > 200) {
-            sp_data_all <- sp_data_all[sp_data_all$SITE %in% unique(dataset_y$SITE)[sample(1:nsite,
-                200, replace = F)], ]
-        } else {
+        	sp_data_all <- sp_data_all[as.character(sp_data_all$SITE) %in% as.character(unique(dataset_y$SITE)[sample(1:nsite,
+            	200, replace = F)]), ]        } else {
             sp_data_all <- sp_data_all
         }
 
-        sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) +
-            1
+        sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
         print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,":",Sys.time(),"second try"))
         gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -
             1, data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
@@ -313,14 +309,13 @@ for (y in sample_year) {
     sp_data_all <- year_day_func(dataset_y)
 
     if (nsite > 200) {
-        sp_data_all <- sp_data_all[sp_data_all$SITE %in% unique(dataset_y$SITE)[sample(1:nsite,
-            200, replace = F)], ]
+        sp_data_all <- sp_data_all[as.character(sp_data_all$SITE) %in% as.character(unique(dataset_y$SITE)[sample(1:nsite,
+            200, replace = F)]), ]
     } else {
         sp_data_all <- sp_data_all
     }
 
-    sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) +
-        1
+    sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
     print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,":",Sys.time()))
     gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -
         1, data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
@@ -332,14 +327,13 @@ for (y in sample_year) {
         sp_data_all <- year_day_func(dataset_y)
 
         if (nsite > 200) {
-            sp_data_all <- sp_data_all[sp_data_all$SITE %in% unique(dataset_y$SITE)[sample(1:nsite,
-                200, replace = F)], ]
+            sp_data_all <- sp_data_all[as.character(sp_data_all$SITE) %in% as.character(unique(dataset_y$SITE)[sample(1:nsite,
+            	200, replace = F)]), ]
         } else {
             sp_data_all <- sp_data_all
         }
 
-        sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) +
-            1
+        sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
         print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,":",Sys.time(),"second try"))
         gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -
             1, data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
@@ -461,8 +455,7 @@ for (y in sample_year) {
     dataset_y <- dataset[dataset$YEAR == y, ]
 
     sp_data_site <- year_day_func(dataset_y)
-    sp_data_site$trimDAYNO <- sp_data_site$DAYNO - min(sp_data_site$DAYNO) +
-        1
+    sp_data_site$trimDAYNO <- sp_data_site$DAYNO - min(sp_data_site$DAYNO) + 1
 
     sp_data_site <- merge(sp_data_site, year_pheno[, c("DAYNO", "nm")],
         by = c("DAYNO"), all.x = TRUE, sort = FALSE)
@@ -534,8 +527,7 @@ for (y in sample_year) {
     dataset_y <- dataset[dataset$YEAR == y, ]
 
     sp_data_site <- year_day_func(dataset_y)
-    sp_data_site$trimDAYNO <- sp_data_site$DAYNO - min(sp_data_site$DAYNO) +
-        1
+    sp_data_site$trimDAYNO <- sp_data_site$DAYNO - min(sp_data_site$DAYNO) + 1
 
     sp_data_site <- merge(sp_data_site, year_pheno[, c("DAYNO", "nm")],
         by = c("DAYNO"), all.x = TRUE, sort = FALSE)
