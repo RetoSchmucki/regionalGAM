@@ -60,7 +60,7 @@ library(nlme)
 library(MASS)
 ```
 
-A collated index correspond to the expected value for a year, when taking into account the variation contained among sites. Here we also add an autoregressive term to account for temporal autocorrelation in the time series `corAR1(form = ~ YEAR | SITE)`.
+A collated index correspond to the expected value for a year, when taking into account the variation contained among sites. Here we also add an autoregressive term to account for temporal autocorrelation in the time series `corAR1`.
 
 ```
 # compute collated annual indices
