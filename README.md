@@ -14,7 +14,6 @@ To install this package from GitHub, you will fist need to install the package `
 
 ```R
 install.packages("devtools")
-
 library(devtools)
 install_github("RetoSchmucki/regionalGAM")
 ```
