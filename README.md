@@ -32,7 +32,7 @@ head(gatekeeper_CM)
 
 The `gatekeeper_CM` data set contains counts for x sites. From this dataset we can compute the regional flight curve that define the expected pattern of abundance of adult butterfly in this specific region. The dataset provided to the function `fligth_curve` must correspond the specific region. In a near future, I am planning to implement additional functions that will facilitate will divide your data into specific regions, stay tuned. 
 
-Note that the data set is structured with six columns, defining 1. species name, 2. monitoring site, 3. observation year, 4. observation month, 5. observation day, and 6. butterfly count. The extra column, TREND, contain the `gatekeeper_CM` data is not required in the `flight_curve()` function. 
+Note that the data set is structured with six columns, defining 1. species name, 2. monitoring site, 3. observation year, 4. observation month, 5. observation day, and 6. butterfly count. The extra column, TREND, found in the `gatekeeper_CM` data is not required in the `flight_curve()` function. 
 
 ```R	
 dataset1 <- gatekeeper_CM[,c("SPECIES","SITE","YEAR","MONTH","DAY","COUNT")]
