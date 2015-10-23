@@ -23,7 +23,7 @@ install_github("RetoSchmucki/regionalGAM")
 
 The package comes with a data set that contains butterfly count for the Gatekeeper (Pironia tithonus) collected between 2003 and 2012 and extracted from five European BMS programs (UK, NL, FR, DE, and Catalonia-ES) for monitoring sites found in the Cold Temperate and Moist bioclimatic region [see Metzger et al. 2013](http://www.research-innovation.ed.ac.uk/Opportunities/global-environmental-stratification-map.aspx#page=features).
 
-```r
+```R
 library(RegionalGAM)
 
 data("gatekeeper_CM")
@@ -34,7 +34,7 @@ The `gatekeeper_CM` data set contains counts for x sites. From this dataset we c
 
 Note that the data set is structured with six columns, defining 1. species name, 2. monitoring site, 3. observation year, 4. observation month, 5. observation day, and 6. butterfly count. The extra column, TREND, contain the `gatekeeper_CM` data is not required in the `flight_curve()` function. 
 
-```	
+```R	
 dataset1 <- gatekeeper_CM[,c("SPECIES","SITE","YEAR","MONTH","DAY","COUNT")]
 
 # compute the annual flight curve, you might get yourself a coffee as this might take some time.
@@ -46,7 +46,7 @@ plot(pheno$DAYNO[pheno$year==2005],pheno$nm[pheno$year==2005],pch=19,cex=0.7,typ
 
 We can now use the annual flight curve contained in the object `pheno` to impute expected count values where weekly counts are missing and thereby compute at each site, the cumulated butterfly days, or weeks as we are dividing the index by seven, over a monitoring season as annual abundance index. Here we will compute abundance indices for a subset of site, showing that you don't need to have the use the same sites that where used for computing the flight curves. But of course, the climate region should correspond as we assume that this curve is region specific.
 
-```
+```R
 dataset2 <- gatekeeper_CM[gatekeeper_CM$TREND==1,c("SPECIES","SITE","YEAR","MONTH","DAY","COUNT")]
 	
 data.index <- abundance_index(dataset2, pheno)
@@ -54,7 +54,7 @@ data.index <- abundance_index(dataset2, pheno)
 
 With the abundance index computed for each site and monitoring year, we can now compute a collated index for each year and estimate the temporal trend. This can be done with the software [TRIM](http://www.cbs.nl/en-GB/menu/themas/natuur-milieu/methoden/trim/default.htm), or in R as shown here. Note that this is a short and minimalist example for trend estimation and more step might be needed to produce sound trend analysis (e.g. stratification per habitat type, bootstrap confidence interval estimation).
 
-```
+```R
 # load required packages
 library(nlme)
 library(MASS)
@@ -62,7 +62,7 @@ library(MASS)
 
 A collated index correspond to the expected value for a year, when taking into account the variation contained among sites. Here we also add an autoregressive term to account for temporal autocorrelation in the time series `corAR1`.
 
-```
+```R
 # compute collated annual indices
 glmm.mod_fullyear <- glmmPQL(regional_gam~ as.factor(YEAR)-1,data=data.index,family=quasipoisson,random=~1|SITE, correlation = corAR1(form = ~ YEAR | SITE),verbose = FALSE)
 summary(glmm.mod_fullyear)
@@ -75,7 +75,7 @@ plot(year,col.index,type='o', xlab="year",ylab="collated index")
 
 From the collated indices, you can now compute a temporal trend for that species in this region. Here we fist use a simple linear model and explore for temporal autocorrelation that we will account in our final model.
 
-```
+```R
 # model temporal trend with a simple linear regression
 mod1 <- gls(col.index ~ year)
 summary(mod1)
