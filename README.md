@@ -2,7 +2,11 @@
 
 With the rapid expansion of monitoring efforts and the usefulness of conducting integrative analyses to inform conservation initiatives, the choice of a robust abundance index is crucial to adequately assess the species status. Butterfly Monitoring Schemes (BMS) operate in increasing number of countries with broadly the same methodology, yet they differ in their observation frequencies and often in the method used to compute annual abundance indices.
 
-Here we implemented the method for computing an abundance index with the *regional GAM* approach, an extension of the two-stages model introduced by Dennis et al. (2013). This index offers the best performance for a wide range of sampling frequency, providing greater robustness and unbiased estimates then the popular linear interpolation approach (Schmucki et al. 2015).
+Here we implemented the method for computing an abundance index with the *regional GAM* approach, an extension of the two-stages model introduced by [Dennis et al. (2013)](http://onlinelibrary.wiley.com/doi/10.1111/2041-210X.12053/abstract). This index offers the best performance for a wide range of sampling frequency, providing greater robustness and unbiased estimates then the popular linear interpolation approach (Schmucki et al. 2015).
+
+#### Suggested citation
+Schmucki Reto, Pe'er G., Roy D, Stefanescu C., Van Swaay C, Oliver T., Kuussaari M., Van Strien A., Ries L., Settele J. Musche M., Carnicer J., Schweiger O., Brereton T., Heliölä J., Harpke A., Kühn, E., Julliard R. (2015) A Regionally informed abundance index for supporting integrative analyses across butterfly monitoring schemes. Journal of Applied Ecology (Accepted November).
+
 
 #### Installation
 
