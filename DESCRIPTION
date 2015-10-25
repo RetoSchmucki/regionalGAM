@@ -1,9 +1,11 @@
 Package: RegionalGAM
-Title: What the Package Does (one line, title case)
-Version: 0.0.0.9000
-Authors@R: person("First", "Last", email = "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph)
+Title: Compute abundance index with the regional GAM approach developed for Butterfly Monitoring Schemes.
+Version: 1.0.0
+Authors@R: person("Reto", "Schmucki", email = "reto.schmucki@mail.mcgill.ca", role = c("cre"))
+Description: This package is an implementation of the regional GAM method presented in Schmucki et al. 2015, an adaptation
+of the two-stage model developed by Dennis et al. 2013. This package compute the flight curve from a set of monitoring sites
+and compute the abudance index, using the flight curve to impute values where weekly counts are missing.
 Depends: R (>= 3.2.0)
-License: What license is it under?
+License: MIT
 LazyData: true
 Imports: mgcv
