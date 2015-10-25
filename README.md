@@ -10,7 +10,7 @@ Schmucki Reto, Pe'er G., Roy D, Stefanescu C., Van Swaay C, Oliver T., Kuussaari
 
 #### Installation
 
-To install this package from GitHub, you will fist need to install the package `devtools` that is available from CRAN. From there, simply use the the function `install_github()` to install the `RegionalGAM` pacakge on your system. Note that this package was build with R 3.2, so you might have to update your R installation. If you are unable to install this package, you might consider sourcing the R script that can be found here: [RegionalGAM source code] (https://github.com/RetoSchmucki/regionalGAM/blob/master/R/dennis_gam_initial_functions.R)
+To install this package from GitHub, you will fist need to install the package `devtools` that is available from CRAN. From there, simply use the the function `install_github()` to install the `RegionalGAM` package on your system. Note that this package was build with R 3.2, so you might have to update your R installation. If you are unable to install this package, you might consider sourcing the R script that can be found here: [RegionalGAM source code] (https://github.com/RetoSchmucki/regionalGAM/blob/master/R/dennis_gam_initial_functions.R)
 
 ```R
 install.packages("devtools")
