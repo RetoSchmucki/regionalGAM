@@ -102,5 +102,6 @@ Here the temporal trend is the year effect estimated in your final model. Note t
 * Improve function documentation
 * Add GAM function with big-data optimization
 * Include flexibility in start and end day definition
+* Include a map object for bioclimatic region to build regional datasets
 
 
