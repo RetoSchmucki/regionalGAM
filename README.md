@@ -18,6 +18,8 @@ library(devtools)
 install_github("RetoSchmucki/regionalGAM")
 ```
 
+For reporting errors and issues related to this package and its functions, please open a [issue here](https://github.com/RetoSchmucki/regionalGAM/issues)
+
 #### Example
 
 The package comes with a data set that contains butterfly count for the Gatekeeper (Pironia tithonus) collected between 2003 and 2012 and extracted from five European BMSs (UK, NL, FR, DE, and Catalonia-ES) for monitoring sites found in the Cold Temperate and Moist bioclimatic region [see Metzger et al. 2013](http://www.research-innovation.ed.ac.uk/Opportunities/global-environmental-stratification-map.aspx#page=features). This data set is associated with the results provided in Schmucki et al. 2015.
