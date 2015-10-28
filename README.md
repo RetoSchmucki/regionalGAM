@@ -96,4 +96,9 @@ abline(mod2,lty=2,col="red")
 
 Here the temporal trend is the year effect estimated in your final model. Note that more sophisticated models can be implemented and that confidence intervals around collated indices could be estimated with a bootstrap procedure.
 
+#### T0 DO
+* Improve function documentation
+* Add GAM function with big-data optimization
+* Include flexibility in start and end day definition
+
 
