@@ -196,10 +196,15 @@ for (y in sample_year) {
     }
 
     sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
-    print(paste("Fitting the GAM for",as.character(sp_data_all$SPECIES[1]),"at year",y,":",Sys.time()))
-    
-    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -1, 
-    	data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
+    print(paste("Fitting the GAM for",as.character(sp_data_all$SPECIES[1]),"and year",y,"with",length(unique(sp_data_all$SITE)),"sites :",Sys.time()))
+
+    if(length(unique(sp_data_all$SITE))>1){
+       gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -1,
+          data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
+    } else {
+      gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1,
+          data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
+        }
 
     # Give a second try if the GAM does not converge the first time
     if (class(gam_obj_site)[1] == "try-error") {
@@ -214,10 +219,15 @@ for (y in sample_year) {
         }
 
         sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
-        print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,":",Sys.time(),"second try"))
-        
-        gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -1, 
-        	data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
+        print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,"with",length(unique(sp_data_all$SITE)),"sites :",Sys.time(),"second try"))
+
+        if(length(unique(sp_data_all$SITE)>1)){
+            gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -1,
+            	data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
+       } else {
+            gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1,
+                data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
+           }
 
         if (class(gam_obj_site)[1] == "try-error") {
             print(paste("OUPS! Flight period for",sp_data_all$SPECIES[1],"at year", y, " was not computed, the GAM did not converge after two trials"))
@@ -319,9 +329,14 @@ for (y in sample_year) {
 
     sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
     print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,":",Sys.time()))
-    
-    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -1, 
-    	data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
+
+    if(unique(sp_data_all$SITE)>1){
+        gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -1,
+    	      data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
+    } else {
+                 gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1,
+                     data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
+          }
 
     # Give a second try if the GAM does not converge the first time
     if (class(gam_obj_site)[1] == "try-error") {
@@ -337,10 +352,15 @@ for (y in sample_year) {
         }
 
         sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
-        print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,":",Sys.time(),"second try"))
-        
-        gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) - 1, 
-        	data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
+        print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,"with",length(unique(sp_data_all$SITE)),"sites :",Sys.time(),"second try"))
+
+        if(length(unique(sp_data_all$SITE)>1)){
+            gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) - 1,
+        	     data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
+          } else {
+               gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1,
+                   data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
+              }
 
         if (class(gam_obj_site)[1] == "try-error") {
             print(paste0("OUPS! Flight period for",sp_data_all$SPECIES[1],"at year", y, " was not computed, the GAM did not converge after two trial"))
