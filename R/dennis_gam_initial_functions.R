@@ -501,8 +501,14 @@ for (y in sample_year) {
     sp_data_site$COUNT[sp_data_site$nm==0] <- NA
 
     # Compute the regional gam index
-    glm_obj_site <- glm(COUNT ~ factor(SITE) + offset(log(nm)) - 1, data = sp_data_site,
-        family = quasipoisson(link = "log"), control = list(maxit = 100))
+
+    if(length(unique(sp_data_site$SITE)>1)){
+        glm_obj_site <- glm(COUNT ~ factor(SITE) + offset(log(nm)) - 1, data = sp_data_site,
+            family = quasipoisson(link = "log"), control = list(maxit = 100))
+    } else {
+       glm_obj_site <- glm(COUNT ~ offset(log(nm)) - 1, data = sp_data_site,
+           family = quasipoisson(link = "log"), control = list(maxit = 100))
+    }
 
     sp_data_site[, "FITTED"] <- predict.glm(glm_obj_site, newdata = sp_data_site,
         type = "response")
@@ -524,7 +530,7 @@ for (y in sample_year) {
         "site_week"]
 
     # Compute the regional gam index
-    print(paste("Compute index for",sp_data_site$SPECIES[1],"at year", y,":",Sys.time()))
+    print(paste("Compute index for",sp_data_site$SPECIES[1],"at year", y,"for",length(unique(sp_data_site$SITE)),"sites:",Sys.time()))
     regional_gam_index <- trap_index(sp_data_site, data_col = "COUNT_IMPUTED",
         time_col = "DAYNO", by_col = c("SPECIES", "SITE", "YEAR"))
 
@@ -573,8 +579,13 @@ for (y in sample_year) {
     sp_data_site$COUNT[sp_data_site$nm==0] <- NA
 
     # Compute the regional gam index
-    glm_obj_site <- glm(COUNT ~ factor(SITE) + offset(log(nm)) - 1, data = sp_data_site,
-        family = quasipoisson(link = "log"), control = list(maxit = 100))
+    if(length(unique(sp_data_site$SITE)>1)){
+        glm_obj_site <- glm(COUNT ~ factor(SITE) + offset(log(nm)) - 1, data = sp_data_site,
+            family = quasipoisson(link = "log"), control = list(maxit = 100))
+    } else {
+       glm_obj_site <- glm(COUNT ~  offset(log(nm)) - 1, data = sp_data_site,
+           family = quasipoisson(link = "log"), control = list(maxit = 100))
+    }
 
     sp_data_site[, "FITTED"] <- predict.glm(glm_obj_site, newdata = sp_data_site,
         type = "response")
@@ -596,7 +607,7 @@ for (y in sample_year) {
         "site_week"]
 
     # Compute the regional gam index
-    print(paste("Compute index for",sp_data_site$SPECIES[1],"at year", y,":",Sys.time()))
+    print(paste("Compute index for",sp_data_site$SPECIES[1],"at year", y,"for",length(unique(sp_data_site$SITE)),"sites:",Sys.time()))
     regional_gam_index <- trap_index(sp_data_site, data_col = "COUNT_IMPUTED",
         time_col = "DAYNO", by_col = c("SPECIES", "SITE", "YEAR"))
 
