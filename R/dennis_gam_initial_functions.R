@@ -221,7 +221,7 @@ for (y in sample_year) {
         sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
         print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,"with",length(unique(sp_data_all$SITE)),"sites :",Sys.time(),"second try"))
 
-        if(length(unique(sp_data_all$SITE)>1)){
+        if(length(unique(sp_data_all$SITE))>1){
             gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -1,
             	data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
        } else {
@@ -354,7 +354,7 @@ for (y in sample_year) {
         sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
         print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,"with",length(unique(sp_data_all$SITE)),"sites :",Sys.time(),"second try"))
 
-        if(length(unique(sp_data_all$SITE)>1)){
+        if(length(unique(sp_data_all$SITE))>1){
             gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) - 1,
         	     data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
           } else {
@@ -502,7 +502,7 @@ for (y in sample_year) {
 
     # Compute the regional gam index
 
-    if(length(unique(sp_data_site$SITE)>1)){
+    if(length(unique(sp_data_site$SITE))>1){
         glm_obj_site <- glm(COUNT ~ factor(SITE) + offset(log(nm)) - 1, data = sp_data_site,
             family = quasipoisson(link = "log"), control = list(maxit = 100))
     } else {
@@ -579,7 +579,7 @@ for (y in sample_year) {
     sp_data_site$COUNT[sp_data_site$nm==0] <- NA
 
     # Compute the regional gam index
-    if(length(unique(sp_data_site$SITE)>1)){
+    if(length(unique(sp_data_site$SITE))>1){
         glm_obj_site <- glm(COUNT ~ factor(SITE) + offset(log(nm)) - 1, data = sp_data_site,
             family = quasipoisson(link = "log"), control = list(maxit = 100))
     } else {
