@@ -75,7 +75,7 @@ year <- unique(data.index$YEAR)
 plot(year,col.index,type='o', xlab="year",ylab="collated index")
 ```
 
-From the collated indices, you can now compute a temporal trend for that species in this region. Here we fist use a simple linear model and explore for temporal autocorrelation that we will account in our final model.
+From the collated indices, you can now compute a temporal trend for that species in this region. Here we first use a simple linear model and explore for temporal autocorrelation that we will account in our final model.
 
 ```R
 # model temporal trend with a simple linear regression
