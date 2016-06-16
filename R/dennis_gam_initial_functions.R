@@ -264,13 +264,13 @@ for (y in sample_year) {
 
     } else {
 
-        # Generate a list of values for all days from the aditive model and use
-        # these value to fill the missing obserations
+        # Generate a list of values for all days from the additive model and use
+        # these value to fill the missing observations
 
         sp_data_all[, "FITTED"] <- mgcv::predict.gam(gam_obj_site, newdata = sp_data_all[,
             c("trimDAYNO", "SITE")], type = "response")
 
-        # force zeros at the begining end end of the year
+        # force zeros at the beginning end end of the year
         sp_data_all[sp_data_all$trimDAYNO < 60, "FITTED"] <- 0
         sp_data_all[sp_data_all$trimDAYNO > 305, "FITTED"] <- 0
 
@@ -330,7 +330,7 @@ for (y in sample_year) {
     sp_data_all$trimDAYNO <- sp_data_all$DAYNO - min(sp_data_all$DAYNO) + 1
     print(paste("Fitting the GAM for",sp_data_all$SPECIES[1],"at year", y,":",Sys.time()))
 
-    if(unique(sp_data_all$SITE)>1){
+    if(length(unique(sp_data_all$SITE))>1){
         gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -1,
     	      data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
     } else {
@@ -369,8 +369,8 @@ for (y in sample_year) {
             sp_data_all[is.na(sp_data_all$COUNT), "COUNT_IMPUTED"] <- NA
             sp_data_all[, "NM"] <- NA
         } else {
-            # Generate a list of values for all days from the aditive model and use
-            # these value to fill the missing obserations
+            # Generate a list of values for all days from the additive model and use
+            # these value to fill the missing observations
             sp_data_all[, "FITTED"] <- mgcv::predict.gam(gam_obj_site, newdata = sp_data_all[,
                 c("trimDAYNO", "SITE")], type = "response")
 
@@ -397,8 +397,8 @@ for (y in sample_year) {
 
     } else {
 
-        # Generate a list of values for all days from the aditive model and use
-        # these value to fill the missing obserations
+        # Generate a list of values for all days from the additive model and use
+        # these value to fill the missing observations
 
         sp_data_all[, "FITTED"] <- mgcv::predict.gam(gam_obj_site, newdata = sp_data_all[,
             c("trimDAYNO", "SITE")], type = "response")
@@ -500,7 +500,7 @@ for (y in sample_year) {
     # remove samples outside the monitoring window
     sp_data_site$COUNT[sp_data_site$nm==0] <- NA
 
-    # Compute the regional gam index
+    # Compute the regional GAM index
 
     if(length(unique(sp_data_site$SITE))>1){
         glm_obj_site <- glm(COUNT ~ factor(SITE) + offset(log(nm)) - 1, data = sp_data_site,
@@ -529,7 +529,7 @@ for (y in sample_year) {
         siteweekcount$Group.1[siteweekcount$x == TRUE])), names(sp_data_site) !=
         "site_week"]
 
-    # Compute the regional gam index
+    # Compute the regional GAM index
     print(paste("Compute index for",sp_data_site$SPECIES[1],"at year", y,"for",length(unique(sp_data_site$SITE)),"sites:",Sys.time()))
     regional_gam_index <- trap_index(sp_data_site, data_col = "COUNT_IMPUTED",
         time_col = "DAYNO", by_col = c("SPECIES", "SITE", "YEAR"))
@@ -578,7 +578,7 @@ for (y in sample_year) {
     # remove samples outside the monitoring window
     sp_data_site$COUNT[sp_data_site$nm==0] <- NA
 
-    # Compute the regional gam index
+    # Compute the regional GAM index
     if(length(unique(sp_data_site$SITE))>1){
         glm_obj_site <- glm(COUNT ~ factor(SITE) + offset(log(nm)) - 1, data = sp_data_site,
             family = quasipoisson(link = "log"), control = list(maxit = 100))
