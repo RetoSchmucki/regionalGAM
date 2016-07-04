@@ -236,12 +236,12 @@ for (y in sample_year) {
             sp_data_all[is.na(sp_data_all$COUNT), "COUNT_IMPUTED"] <- NA
             sp_data_all[, "NM"] <- NA
         } else {
-            # Generate a list of values for all days from the aditive model and use
-            # these value to fill the missing obserations
+            # Generate a list of values for all days from the additive model and use
+            # these value to fill the missing observations
             sp_data_all[, "FITTED"] <- mgcv::predict.gam(gam_obj_site, newdata = sp_data_all[,
                 c("trimDAYNO", "SITE")], type = "response")
 
-            # force zeros at the begining end end of the year
+            # force zeros at the beginning end end of the year
             sp_data_all[sp_data_all$trimDAYNO < 60, "FITTED"] <- 0
             sp_data_all[sp_data_all$trimDAYNO > 305, "FITTED"] <- 0
 
@@ -258,7 +258,7 @@ for (y in sample_year) {
             # Add data to sp_data data.frame (ensure merge does not sort the data!)
             sp_data_all = merge(sp_data_all, site_sums, by <- c("SITE"),
                 all = TRUE, sort = FALSE)
-            # Calculate normalised values
+            # Calculate normalized values
             sp_data_all[, "NM"] <- sp_data_all$FITTED/sp_data_all$SITE_YR_FSUM
         }
 
@@ -287,7 +287,7 @@ for (y in sample_year) {
         # Add data to sp_data data.frame (ensure merge does not sort the data!)
         sp_data_all = merge(sp_data_all, site_sums, by = c("SITE"), all = TRUE,
             sort = FALSE)
-        # Calculate normalised values
+        # Calculate normalized values
         sp_data_all[, "NM"] = sp_data_all$FITTED/sp_data_all$SITE_YR_FSUM
 
     }
@@ -374,7 +374,7 @@ for (y in sample_year) {
             sp_data_all[, "FITTED"] <- mgcv::predict.gam(gam_obj_site, newdata = sp_data_all[,
                 c("trimDAYNO", "SITE")], type = "response")
 
-            # force zeros at the begining end end of the year
+            # force zeros at the beginning end end of the year
             sp_data_all[sp_data_all$trimDAYNO < 60, "FITTED"] <- 0
             sp_data_all[sp_data_all$trimDAYNO > 305, "FITTED"] <- 0
 
@@ -391,7 +391,7 @@ for (y in sample_year) {
             # Add data to sp_data data.frame (ensure merge does not sort the data!)
             sp_data_all = merge(sp_data_all, site_sums, by <- c("SITE"),
                 all = TRUE, sort = FALSE)
-            # Calculate normalised values
+            # Calculate normalized values
             sp_data_all[, "NM"] <- sp_data_all$FITTED/sp_data_all$SITE_YR_FSUM
         }
 
@@ -403,7 +403,7 @@ for (y in sample_year) {
         sp_data_all[, "FITTED"] <- mgcv::predict.gam(gam_obj_site, newdata = sp_data_all[,
             c("trimDAYNO", "SITE")], type = "response")
 
-        # force zeros at the begining end end of the year
+        # force zeros at the beginning end end of the year
         sp_data_all[sp_data_all$trimDAYNO < 60, "FITTED"] <- 0
         sp_data_all[sp_data_all$trimDAYNO > 305, "FITTED"] <- 0
 
@@ -420,7 +420,7 @@ for (y in sample_year) {
         # Add data to sp_data data.frame (ensure merge does not sort the data!)
         sp_data_all = merge(sp_data_all, site_sums, by = c("SITE"), all = TRUE,
             sort = FALSE)
-        # Calculate normalised values
+        # Calculate normalized values
         sp_data_all[, "NM"] = sp_data_all$FITTED/sp_data_all$SITE_YR_FSUM
 
     }
