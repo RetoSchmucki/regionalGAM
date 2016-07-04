@@ -60,7 +60,7 @@ flight_curve.v2 <- function(your_dataset) {
                         data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
                 }
                 if (class(gam_obj_site)[1] == "try-error") {
-                    print(paste0("Error in fittign the flight period for",sp_data_all$SPECIES[1],"at year", y, " no convergence after two trial"))
+                    print(paste("Error in fitting the flight period for",sp_data_all$SPECIES[1],"at year", y, "no convergence after two trial"))
                     sp_data_all[, "FITTED"] <- NA
                     sp_data_all[, "COUNT_IMPUTED"] <- NA
                     sp_data_all[is.na(sp_data_all$COUNT), "COUNT_IMPUTED"] <- NA
