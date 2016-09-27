@@ -515,12 +515,12 @@ for (y in sample_year) {
     sp_data_site[, "COUNT_IMPUTED"] <- sp_data_site$COUNT
     sp_data_site[is.na(sp_data_site$COUNT), "COUNT_IMPUTED"] <- sp_data_site$FITTED[is.na(sp_data_site$COUNT)]
 
-    # add fitted value for missing mid-week data
+   ## add fitted value for missing mid-week data
     sp_data_site <- sp_data_site[!paste(sp_data_site$DAY_WEEK, sp_data_site$COUNT) %in%
         c("1 NA", "2 NA", "3 NA", "5 NA", "6 NA", "7 NA"), ]
 
-    # remove all added mid-week values for weeks with real count
-    # (observation)
+    ## remove all added mid-week values for weeks with real count
+    ## (observation)
     sp_data_site$site_week <- paste(sp_data_site$SITE, sp_data_site$WEEK,
         sep = "_")
     siteweekcount <- aggregate(sp_data_site$COUNT, by = list(sp_data_site$site_week),
@@ -529,7 +529,7 @@ for (y in sample_year) {
         siteweekcount$Group.1[siteweekcount$x == TRUE])), names(sp_data_site) !=
         "site_week"]
 
-    # Compute the regional GAM index
+    ## Compute the regional GAM index
     print(paste("Compute index for",sp_data_site$SPECIES[1],"at year", y,"for",length(unique(sp_data_site$SITE)),"sites:",Sys.time()))
     regional_gam_index <- trap_index(sp_data_site, data_col = "COUNT_IMPUTED",
         time_col = "DAYNO", by_col = c("SPECIES", "SITE", "YEAR"))
