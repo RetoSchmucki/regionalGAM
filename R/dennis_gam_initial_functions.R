@@ -161,7 +161,7 @@ trap_index = function(sp_data, data_col = "IMP", time_col = "DAYNO", by_col = c(
 #' flight_curve()
 
 
-flight_curve.v2 <- function(your_dataset) {
+flight_curve <- function(your_dataset) {
 
     if("mgcv" %in% installed.packages() == "FALSE") {
         print("mgcv package is not installed.")
