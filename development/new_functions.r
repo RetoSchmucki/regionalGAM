@@ -1,5 +1,5 @@
     
-###  t.seq  function to build a full sequence of days, weeks, week-days, months and years
+###  t.seq  function to build a full sequence of date since initial year to an ending year
 ###         to subset a time-series template for specified monitoring season, independent of 
 ###         the year
 
@@ -14,6 +14,10 @@ t.seq = function(init.year=1970,last.year=format(Sys.Date(),"%Y")) {
     return(date.serie)
 
     }
+
+###  t.table  function to build a full sequence of days, iso weeks, week-days (1:monday, 7:sunday), 
+###         months and years to subset a time-series template for specified monitoring season,
+###         independent of the year
 
 t.table = function(init.year=1970,last.year=format(Sys.Date(),"%Y"),week_day1='monday') {
     
@@ -37,7 +41,9 @@ t.table = function(init.year=1970,last.year=format(Sys.Date(),"%Y"),week_day1='m
 
     }   
 
-## subset for the monitoring window
+###  m.season  function to build a full sequence of monitoring season, with specific starting end ending
+###             months and days, the season start in year y and end in year y+1.
+
 
 m.season = function(d.series,start.month=4,end.month=9,start.day=1,end.day=NULL){
         
@@ -75,31 +81,40 @@ m.season = function(d.series,start.month=4,end.month=9,start.day=1,end.day=NULL)
         return(d.series)
     }
 
-## initialize with "zeros" when site has been visited
+### d.site.series function to initialize all visit and site with "zeros" while leaving all non visited day 
+###                 with an <NA>, this can then be used to add the observed count for specific species
+###                 - remove all monitoring seasons before establishment for a specific site.
+
+
 d.site.series = function(m.visit, d.season) {
        
+        data.table::setkey(d.season,year)
+        data.table::setkey(m.visit,YEAR,SITENO)
+
         r.year <- d.season[,range(data.table::year(date))]
+
+        site.l <- m.visit[data.table::year(VISIT_DATE)>=min(r.year) & 
+                            data.table::year(VISIT_DATE)<=max(r.year),
+                                .(site=.SD[,unique(SITENO)]),by=YEAR]
+
+        data.table::setkey(site.l,YEAR,site)
         
-        site.l <- unique(m.visit[data.table::year(VISIT_DATE)>=min(r.year) & 
-                                data.table::year(VISIT_DATE)<=max(r.year),
-                                SITENO]) 
-        
-        d.site <- d.season[rep(seq_len(nrow(d.season)),max(seq_along(site.l))),.(date,season.year,season)][,c("site"):=rep(site.l,rep(nrow(d.season),max(seq_along(site.l))))]     
+        d.site <- merge(d.season,site.l,by.x="year",by.y="YEAR",allow.cartesian=TRUE)
 
         data.table::setkey(d.site,site,date)
-        data.table::setkey(m.visit,SITENO,VISIT_DATE)
 
-
-        d.site <- d.site[,count:=as.integer()]
-        d.site <- d.site[m.visit,count:=0]
+        d.site <- d.site[m.visit,count:=0L]
 
         return(d.site)
 
     } 
 
+### s.count.t_day function to standardize the species count for one visit per day. Two options,
+###                 use the mean rounded to the higher integer or delete site where count could
+###                 not be unambigously be attibutre to a single visit 
+###                 (method: "average" or "delete")
 
-## species count per transect-day
-s.count.t_day = function(m.count,m.visit) {
+s.count.t_day = function(m.count,m.visit,method="average") {
 
         data.table::setkey(m.count,SITENO,SPECIES,VISITDATE)
         data.table::setkey(m.visit,SITENO,VISIT_DATE)
@@ -110,39 +125,41 @@ s.count.t_day = function(m.count,m.visit) {
         data.table::setkey(t.m.count,SITENO,VISITDATE)
         data.table::setkey(t.d.count,SITENO,VISIT_DATE)
 
-        t.m.count[t.d.count,total_day_count:=ceiling(total_count/nbr_visit)]
-
+        if(method=="average") {t.m.count[t.d.count,total_day_count:=ceiling(total_count/nbr_visit)]}
+        if(method=="delete") {t.m.count[nbr_visit==1,t.d.count,total_day_count:=total_count]}
 
         return(t.m.count)
 
     } 
 
-t.d.count[nbr_visit==3,]
-c.t_day[VISITDATE=="2014-05-16" & SITENO==1842]
+### s.count.site.series function to generate a full series of observed count, including zeros and missing
+###                     observation for one species for each day since a starting and ending years
 
 s.count.site.series = function(sp=1,d.series,c.t_day) {
 
     data.table::setkey(c.t_day,SITENO,VISITDATE)
     data.table::setkey(d.series,site,date)
-    c.site_series <- d.series[c.t_day[SPECIES %in% species,],count:=as.integer(total_day_count)]
+    c.site_series <- d.series[c.t_day[SPECIES %in% sp,],count:=as.integer(total_day_count)]
     c.site_series[,species:=sp]
 
     return(c.site_series)
 
     }
 
+t.d.count[nbr_visit==3,]
+c.t_day[VISITDATE=="2014-05-16" & SITENO==1842]
 
-## load monitoring visit
+## load monitoring visit and fixing dates
 m.visit <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK Visits Table.txt",header=TRUE)
-m.visit$VISIT_DATE <- data.table::as.IDate(as.Date(m.visit$VISIT_DATE,format="%d-%b-%y")) 
+m.visit[,VISIT_DATE:=data.table::as.IDate(as.Date(m.visit$VISIT_DATE,format="%d-%b-%y"))]
 
 m.count <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK CountsTable.txt",header=TRUE)
-m.count$VISITDATE <- data.table::as.IDate(as.Date(m.count$VISITDATE,format="%d/%m/%Y")) 
+m.count[,VISIT_DATE:=data.table::as.IDate(as.Date(m.count$VISITDATE,format="%d/%m/%Y"))][,VISITDATE:=NULL]
 
 ## test
 
-d <- t.table(1980)
-d.season <- m.season(d,3,9)
+d <- t.table(1970)
+d.season <- m.season(d,4,9)
 d.series <- d.site.series(m.visit, d.season)
 c.t_day <- s.count.t_day(m.count,m.visit)
 c.site_series <- s.count.site.series(sp=54,d.series,c.t_day)
