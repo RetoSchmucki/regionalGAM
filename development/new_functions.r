@@ -1,147 +1,155 @@
-    
-###  t.seq  function to build a full sequence of date since initial year to an ending year
+##==========================================
+## Name Convention
+##
+##      FUNCTION: ts_snake_function()
+##      ARGUMENT: CamelNotation
+##      OBJECT: object_snake_name
+##==========================================
+
+###  ts_date_seq  function to build a full time series sequence of date since initial year to an ending year
 ###         to subset a time-series template for specified monitoring season, independent of 
 ###         the year
 
-t.seq = function(init.year=1970,last.year=format(Sys.Date(),"%Y")) {
+ts_date_seq = function(InitYear=1970,LastYear=format(Sys.Date(),"%Y")) {
 
-    init.date <- as.Date(paste((init.year-1), "01-01", sep = "-"))
-    last.date <- as.Date(paste((as.numeric(last.year)+1), "12-31", sep = "-"))
+    init_date <- as.Date(paste((InitYear-1), "01-01", sep = "-"))
+    last_date <- as.Date(paste((as.numeric(LastYear)+1), "12-31", sep = "-"))
 
-    date.serie <- as.POSIXct(seq(from=init.date, to= last.date, by = "day"), format = "%Y-%m-%d")
-    date.serie <- date.serie[!format(date.serie,'%Y') %in% c((init.year-1),as.numeric(last.year)+1)]
+    date_serie <- as.POSIXct(seq(from=init_date, to= last_date, by = "day"), format = "%Y-%m-%d")
+    date_serie <- date_serie[!format(date_serie,'%Y') %in% c((InitYear-1),as.numeric(LastYear)+1)]
 
-    return(date.serie)
+    return(date_serie)
 
     }
 
-###  t.table  function to build a full sequence of days, iso weeks, week-days (1:monday, 7:sunday), 
+###  ts_dwmy_table  function to build a full time series sequence of days, iso weeks, week-days (1:monday, 7:sunday), 
 ###         months and years to subset a time-series template for specified monitoring season,
 ###         independent of the year
 
-t.table = function(init.year=1970,last.year=format(Sys.Date(),"%Y"),week_day1='monday') {
+ts_dwmy_table = function(InitYear=1970,LastYear=format(Sys.Date(),"%Y"),WeekDay1='monday') {
     
-        d.s <- t.seq(init.year,last.year)
+        date_seq <- ts_date_seq(InitYear,LastYear)
 
-        if(week_day1=='monday'){
+        if(WeekDay1=='monday'){
             w <- c(7,1:6)
         }else{
             w <- c(1:7)
         }
 
-        date.series <- data.table::data.table(date=data.table::as.IDate(d.s),
-                                 day.since=seq_along(d.s),
-                                 year=data.table::year(d.s),
-                                 month=data.table::month(d.s),
-                                 week=data.table::isoweek(d.s),
-                                 week_day=w[data.table::wday(d.s)],
-                                 month_day=data.table::mday(d.s))
+        dt_iso_dwmy <- data.table::data.table(
+                                date=data.table::as.IDate(date_seq),
+                                day_since=seq_along(date_seq),
+                                year=data.table::year(date_seq),
+                                month=data.table::month(date_seq),
+                                week=data.table::isoweek(date_seq),
+                                week_day=w[data.table::wday(date_seq)],
+                                month_day=data.table::mday(date_seq))
 
-        return(date.series)
+        return(dt_iso_dwmy)
 
     }
 
-###  m.season  function to build a full sequence of monitoring season, with specific starting end ending
+###  ts_monit_season  function to build a full time_series sequence of monitoring season, with specific starting end ending
 ###             months and days, the season start in year y and end in year y+1.
 
-m.season = function(d.series,start.month=4,end.month=9,start.day=1,end.day=NULL){
+ts_monit_season = function(d_series,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NULL){
         
         ## NO leap year
-        if(is.null(end.day)) {
-            end.day <- max(data.table::mday(seq(from=as.Date(paste0('2017-',end.month,'-01')),by='day',length=31)))
+        if(is.null(EndDay)) {
+            EndDay <- max(data.table::mday(seq(from=as.Date(paste0('2017-',EndMonth,'-01')),by='day',length=31)))
         } 
 
-        if (start.month < end.month){
-            s.month <- c(start.month:end.month)
-            s.md.out <- c(paste(start.month,c(0:(start.day-1))),paste(end.month,c((end.day+1):32)))
-            y.series <- data.table::data.table(season.year=as.factor(data.table::year(d.series$date)),
-                                                season=ifelse(((data.table::month(d.series$date)%in%(s.month))
-                                                        & (!(paste(data.table::month(d.series$date),data.table::mday(d.series$date))%in%s.md.out))),
+        if (StartMonth < EndMonth){
+            s_month <- c(StartMonth:EndMonth)
+            s_md_out <- c(paste(StartMonth,c(0:(StartDay-1))),paste(EndMonth,c((EndDay+1):32)))
+            y_series <- data.table::data.table(season_year=as.factor(data.table::year(d_series$date)),
+                                               season=ifelse(((data.table::month(d_series$date)%in%(s_month))
+                                                        & (!(paste(data.table::month(d_series$date),data.table::mday(d_series$date)) %in% s_md_out))),
                                                         1,0))                               
         }
 
-        if (start.month > end.month){
+        if (StartMonth > EndMonth){
 
             ## trim time-series around complete season
-            a <- as.Date(paste(min(data.table::year(d.series$date)),start.month,start.day,sep='-'))
-            b <- as.Date(paste(max(data.table::year(d.series$date)),end.month,end.day,sep='-'))
+            a <- as.Date(paste(min(data.table::year(d_series$date)),StartMonth,StartDay,sep='-'))
+            b <- as.Date(paste(max(data.table::year(d_series$date)),EndMonth,EndDay,sep='-'))
             d <- d[d$date >= a & d$date <= b]
 
-            s.month <- c(start.month:12,1:end.month)
-            s.md.out <- c(paste(start.month,c(0:(start.day-1))),paste(end.month,c((end.day+1):32)))
-            y.series <- data.table::data.table(season.year=as.factor(ifelse(data.table::month(d.series$date)>=start.month,data.table::year(d.series$date),(data.table::year(d.series$date)-1))),
-                                                season=ifelse(((data.table::month(d.series$date)%in%(s.month))
-                                                        & (!(paste(data.table::month(d.series$date),data.table::mday(d.series$date))%in%s.md.out))),
+            s_month <- c(StartMonth:12,1:EndMonth)
+            s_md_out <- c(paste(StartMonth,c(0:(StartDay-1))),paste(EndMonth,c((EndDay+1):32)))
+            y_series <- data.table::data.table(season_year=as.factor(ifelse(data.table::month(d_series$date)>=StartMonth,data.table::year(d_series$date),(data.table::year(d_series$date)-1))),
+                                                season=ifelse(((data.table::month(d_series$date)%in%(s_month))
+                                                        & (!(paste(data.table::month(d_series$date),data.table::mday(d_series$date))%in%s_md_out))),
                                                         1,0))                               
         }
 
-        d.series <- d.series[,c("season.year","season") := y.series[,.(season.year,(as.numeric(season.year)*season))]]
+        d_series <- d_series[,c("season_year","season") := y_series[,.(season_year,(as.numeric(season_year)*season))]]
 
-        return(d.series)
+        return(d_series)
     }
 
-### d.site.series function to initialize all visit and site with "zeros" while leaving all non visited day 
+### ts_site_visit function to initialize a time series with all visit and site with "zeros" while leaving all non visited day 
 ###                 with an <NA>, this can then be used to add the observed count for specific species
 ###                 only have time series for years when a site has been monitored.
 
-d.site.series = function(m.visit, d.season) {
+ts_site_visit = function(m_visit, d_season) {
        
-        data.table::setkey(d.season,year)
-        data.table::setkey(m.visit,YEAR,SITENO)
+        data.table::setkey(d_season,year)
+        data.table::setkey(m_visit,YEAR,SITENO)
 
-        r.year <- d.season[,range(data.table::year(date))]
+        r_year <- d_season[,range(data.table::year(date))]
 
-        site.l <- m.visit[data.table::year(VISIT_DATE)>=min(r.year) & 
-                            data.table::year(VISIT_DATE)<=max(r.year),
-                                .(site=.SD[,unique(SITENO)]),by=YEAR]
+        site_l <- m_visit[data.table::year(VISIT_DATE)>=min(r_year) & 
+                            data.table::year(VISIT_DATE)<=max(r_year),
+                            .(site=.SD[,unique(SITENO)]),by=YEAR]
 
-        data.table::setkey(site.l,YEAR,site)
+        data.table::setkey(site_l,YEAR,site)
         
-        d.site <- merge(d.season,site.l,by.x="year",by.y="YEAR",allow.cartesian=TRUE)
+        d_site <- merge(d_season,site_l,by.x="year",by.y="YEAR",allow.cartesian=TRUE)
 
-        data.table::setkey(d.site,site,date)
-        data.table::setkey(m.visit,SITENO,VISIT_DATE)
+        data.table::setkey(d_site,site,date)
+        data.table::setkey(m_visit,SITENO,VISIT_DATE)
 
-        d.site <- d.site[m.visit,count:=0L]
+        d_site <- d_site[m_visit,count:=0L]
 
-        return(d.site)
+        return(d_site)
 
     }
 
-### s.count.t_day function to standardize the species count for one visit per day. Two options,
+### b_count_perday function to standardize the butterfly species count for one visit per day. Two options,
 ###                 use the mean rounded to the higher integer or delete site where count could
 ###                 not be unambiguously attributed to a single visit 
 ###                 (method: "average" or "delete")
 
-s.count.t_day = function(m.count,m.visit,method="average") {
+b_count_perday = function(m_count,m_visit,UniMethod="average") {
 
-        data.table::setkey(m.count,SITENO,SPECIES,VISIT_DATE)
-        data.table::setkey(m.visit,SITENO,VISIT_DATE)
+        data.table::setkey(m_count,SITENO,SPECIES,VISIT_DATE)
+        data.table::setkey(m_visit,SITENO,VISIT_DATE)
         
-        t.m.count <- m.count[,.(total_count=sum(COUNT)),by=.(SITENO,SPECIES,VISIT_DATE)]
-        t.d.count <- m.visit[,.(nbr_visit=.N),by=.(SITENO,VISIT_DATE)]
+        t_m_count <- m_count[,.(total_count=sum(COUNT)),by=.(SITENO,SPECIES,VISIT_DATE)]
+        t_d_count <- m_visit[,.(nbr_visit=.N),by=.(SITENO,VISIT_DATE)]
 
-        data.table::setkey(t.m.count,SITENO,VISIT_DATE)
-        data.table::setkey(t.d.count,SITENO,VISIT_DATE)
+        data.table::setkey(t_m_count,SITENO,VISIT_DATE)
+        data.table::setkey(t_d_count,SITENO,VISIT_DATE)
 
-        if(method=="average") {t.m.count[t.d.count,total_day_count:=ceiling(total_count/nbr_visit)]}
-        if(method=="delete") {t.m.count[nbr_visit==1,t.d.count,total_day_count:=total_count]}
+        if(UniMethod=="average") {t_m_count[t_d_count,total_day_count:=ceiling(total_count/nbr_visit)]}
+        if(UniMethod=="delete") {t_m_count[nbr_visit==1,t_d_count,total_day_count:=total_count]}
 
-        return(t.m.count)
+        return(t_m_count)
 
     }
 
-### s.count.site.series function to generate a full series of observed count, including zeros and missing
+### ts_count_site_visit function to generate a full time series of observed count, including zeros and missing
 ###                     observation for one species for each day since a starting and ending years
 
-s.count.site.series = function(sp=1,d.series,c.t_day) {
+ts_count_site_visit = function(sp=1,d_series,c_t_day) {
 
-    data.table::setkey(c.t_day,SITENO,VISIT_DATE)
-    data.table::setkey(d.series,site,date)
-    c.site_series <- d.series[c.t_day[SPECIES %in% sp,],count:=as.integer(total_day_count)]
-    c.site_series[,species:=sp]
+    data.table::setkey(c_t_day,SITENO,VISIT_DATE)
+    data.table::setkey(d_series,site,date)
+    c_site_series <- d_series[c_t_day[SPECIES %in% sp,],count:=as.integer(total_day_count)]
+    c_site_series[,species:=sp]
 
-    return(c.site_series)
+    return(c_site_series)
 
     }
 
@@ -257,7 +265,7 @@ a_curve <- function(N, max_life=15, shape_a=0.5, shape_b=0.2){
 
            c_mat <- matrix(0,nrow=length(N),ncol=length(N)+max_life+1)
 
-           ## decay
+           ## daily hazard and decay (beta distribution)
 
            M_haz <- c(0,diff(pbeta(seq(0,1,(1/max_life)),shape_a,shape_b)),1)
         
@@ -286,12 +294,19 @@ a_curve <- function(N, max_life=15, shape_a=0.5, shape_b=0.2){
 par(mfrow=c(2,2))
 
 for (t in 1:4){
-    e <- e_curve(1:100)
-    plot(1:100,e)
+    e <- e_curve(1:100,50,sig=0.5,bet=3)
+plot(1:100,e)
     c <- c_curve(e,100)
-    plot(1:100,c)
-    a <- a_curve(c)
-    plot(seq_along(a),a,main=paste('time',t))
+plot(1:100,c,,main=paste(sum(c),'realized emergences'))
+points(1:100,100*e,col='red',pch=19)
+    a1 <- a_curve(c,max_life=10)
+plot(seq_along(a1),a1,main=paste(sum(a1),'cumulative adult counts (b1)'))
+
+    e <- e_curve(1:100,60,sig=0.5,bet=2)
+    c <- c_curve(e,100)
+    a2 <- a_curve(c,max_life=10)
+plot(seq_along(1:max(length(a1),length(a2))),a1+a2,main=paste(sum(c(a1,a2)),'cumulative adult counts b1+2'))
+
     }
 
 
