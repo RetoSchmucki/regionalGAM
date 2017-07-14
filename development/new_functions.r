@@ -4,6 +4,7 @@
 ##      FUNCTION: ts_snake_function()
 ##      ARGUMENT: CamelNotation
 ##      OBJECT: object_snake_name
+##
 ##==========================================
 
 ###  ts_date_seq  function to build a full time series sequence of date since initial year to an ending year
@@ -52,8 +53,10 @@ ts_dwmy_table = function(InitYear=1970,LastYear=format(Sys.Date(),"%Y"),WeekDay1
 ###  ts_monit_season  function to build a full time_series sequence of monitoring season, with specific starting end ending
 ###             months and days, the season start in year y and end in year y+1.
 
-ts_monit_season = function(d_series,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NULL){
+ts_monit_season = function(d_series,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NULL,FullSeason=TRUE){
         
+        d_series <- data.table::copy(d_series)
+
         ## NO leap year
         if(is.null(EndDay)) {
             EndDay <- max(data.table::mday(seq(from=as.Date(paste0('2017-',EndMonth,'-01')),by='day',length=31)))
@@ -70,11 +73,6 @@ ts_monit_season = function(d_series,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NU
 
         if (StartMonth > EndMonth){
 
-            ## trim time-series around complete season
-            a <- as.Date(paste(min(data.table::year(d_series$date)),StartMonth,StartDay,sep='-'))
-            b <- as.Date(paste(max(data.table::year(d_series$date)),EndMonth,EndDay,sep='-'))
-            d <- d[d$date >= a & d$date <= b]
-
             s_month <- c(StartMonth:12,1:EndMonth)
             s_md_out <- c(paste(StartMonth,c(0:(StartDay-1))),paste(EndMonth,c((EndDay+1):32)))
             y_series <- data.table::data.table(season_year=as.factor(ifelse(data.table::month(d_series$date)>=StartMonth,data.table::year(d_series$date),(data.table::year(d_series$date)-1))),
@@ -84,6 +82,19 @@ ts_monit_season = function(d_series,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NU
         }
 
         d_series <- d_series[,c("season_year","season") := y_series[,.(season_year,(as.numeric(season_year)*season))]]
+
+        ## identify (trim) the full seasons
+        if(isTRUE(FullSeason)){
+            
+            d_series[,start_end:=d_series[,ifelse(month==StartMonth & month_day==StartDay,1L,0L)]
+                                            + d_series[,ifelse(month==EndMonth & month_day==EndDay,1L,0L)]]
+            
+            d_series[,full_season:=ifelse(season!= 0 & 
+                                         season_year %in% (d_series[,sum(start_end),by=season_year][V1==2,season_year]),
+                                         1,0)*season]
+
+            d_series[,start_end:=NULL]
+        }   
 
         return(d_series)
     }
@@ -142,7 +153,9 @@ b_count_perday = function(m_count,m_visit,UniMethod="average") {
 ### ts_count_site_visit function to generate a full time series of observed count, including zeros and missing
 ###                     observation for one species for each day since a starting and ending years
 
-ts_count_site_visit = function(sp=1,d_series,c_t_day) {
+ts_count_site_visit = function(d_series,c_t_day,sp=1) {
+
+    d_series <- data.table::copy(d_series)
 
     data.table::setkey(c_t_day,SITENO,VISIT_DATE)
     data.table::setkey(d_series,site,date)
@@ -154,42 +167,263 @@ ts_count_site_visit = function(sp=1,d_series,c_t_day) {
     }
 
 
-t.d.count[nbr_visit==3,]
-c.t_day[VISITDATE=="2014-05-16" & SITENO==1842]
+### SIMULATE DATA
 
-## load monitoring visit and fixing dates
+### sim_emerg_curve() estimates an emergence curve shape following a logistic distribution along a time series [t_series], with peak position [peak_pos] relative along a  , 
+### vector using the percentile and a standard deviation around the peak [sd_peak] in days, with two shape parameters
+### sigma [sig] for left or right skewness (left when > 1, right when < 1, logistic when  = 1) and bet [bet] for a scale parameter. 
 
-m.visit <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK Visits Table.txt",header=TRUE)
-m.visit[,VISIT_DATE:=data.table::as.IDate(as.Date(m.visit$VISIT_DATE,format="%d-%b-%y"))]
+### return a vector of relative emergence along a vector of length t.
 
-m.count <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK CountsTable.txt",header=TRUE)
-m.count[,VISIT_DATE:=data.table::as.IDate(as.Date(m.count$VISITDATE,format="%d/%m/%Y"))][,VISITDATE:=NULL]
-
-section.geo <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK Sections Table.txt",header=TRUE)
-section.geo.sp <-section.geo
-sp::coordinates(section.geo.sp) <- ~EAST + NORTH
+### Calabrese, J.M. (2012) How emergence and death assumptions affect count-based estimates of butterfly abundance and lifespan. Population Ecology, 54, 431–442.
 
 
+sim_emerg_curve <- function (t_series, PeakPos=50, sdPeak=1, sig=0.15, bet=3) {
+               
+            # EMERGENCE 1
+                
+            # peak + sample 1 from normal distribution (0,sd)
+            u1 <- round(PeakPos * length(t_series)/100) + rnorm(1, 0, sdPeak)
 
-## test
+            # Logistic with 
+            fE1 <- (sig * (exp((t_series - u1)/bet)))/(bet * (1 + exp((t_series - u1)/bet)))^(sig + 1)
+                
+            # Standardize to AUC 1
+            sdfe <- fE1/sum(fE1)  
 
-m.count[,max(data.table::year(VISIT_DATE))]
+            return(sdfe)
+            
+            }
 
-d <- t.table(2015)
-d.season <- m.season(d,4,9)
-d.series <- d.site.series(m.visit, d.season)
-c.t_day <- s.count.t_day(m.count,m.visit)
-c.site_series <- s.count.site.series(sp=2,d.series,c.t_day)
+### sim_emerg_count simulates emergence of n adults [TotalEmerg] according an emergence curve [sdfe] using a Poisson process
 
-c.site_series[year==1997 & count==0,site]
+sim_emerg_count <- function(sdfe, TotalEmerg=100) {
+
+            n_emerg <- unlist(lapply(TotalEmerg*sdfe,function(x) {rpois(1,x)}))
+
+            return(n_emerg)
+
+            }
+
+### sim_adult_count simulates the number of adults in a population, according to individual maximum life span [max_life] and daily
+### mortality risk based on a beta distribution with ShapeA and ShapeB parameters
+
+sim_adult_count <- function(n_emerg, MaxLife=15, ShapeA=0.5, ShapeB=0.2){
+
+           c_mat <- matrix(0,nrow=length(n_emerg),ncol=length(n_emerg)+MaxLife+1)
+
+           ## daily hazard and decay (beta distribution)
+
+           m_hazard <- c(0,diff(pbeta(seq(0,1,(1/MaxLife)),ShapeA,ShapeB)),1)
+        
+           for (i in seq_along(n_emerg)){
+
+                s <- n_emerg[i]
+                y=2
+                l=s
+
+                while(s > 0 & y <= MaxLife+2){
+                    s <- s-rbinom(1,s,m_hazard[y])
+                    y <- y+1
+                    l <- c(l,s)
+                    }
+
+                c_mat[i,i:(i+length(l)-1)] <- l
+
+                }
+
+            return(colSums(c_mat))
+
+            }
+
+
+### sim_butterfly_count() simulates count data along monitoring seasons for a univoltine or multivoltine species, from month 4 to 9 (April to September)
+
+sim_butterfly_count <- function(d_season, FullSeason=TRUE, GenNumb=1, PeakPos=c(25,75), sdPeak=c(1,2), sig=0.15,
+                                bet=3, TotalEmerg=100, MaxLife=10) {
+
+        if(length(PeakPos) < GenNumb) {stop("For multivoltine species, you need to provide a vector of distinct peak positions [PeakPos] to cover each emergence \n")}
+        
+        sdPeak <- rep(sdPeak,GenNumb)
+        sig <- rep(sig,GenNumb)
+        bet <- rep(bet,GenNumb)
+        TotalEmerg <- rep(TotalEmerg,GenNumb)
+        MaxLife <- rep(MaxLife,GenNumb)
+
+        d_season <- data.table::copy(d_season)
+
+        if(isTRUE(FullSeason)){
+            sim_season=unique(d_season$full_season)
+            }else{
+            sim_season=unique(d_season$season)
+        }
+
+        GenSim <- 1
+
+        for (i in sim_season){
+
+            if(i==0){next}
+
+                t_s <- seq_along(1:d_season[season==i,.N])
+                emerg_curve <- sim_emerg_curve(t_s,PeakPos=PeakPos[GenSim],sdPeak=sdPeak[GenSim],sig=sig[GenSim],bet=bet[GenSim])
+                emerg_count <- sim_emerg_count(emerg_curve,TotalEmerg=TotalEmerg[GenSim])
+                adult_count <- sim_adult_count(emerg_count,MaxLife=MaxLife[GenSim])
+                d_season[season==i,count:=adult_count[1:d_season[season==i,.N]]]
+        }
+
+        cumul_count <- d_season[,count]
+        GenSim <- GenSim+1
+            
+        while(GenNumb>=GenSim) {
+
+            for (i in sim_season){
+
+                if(i==0){next}
+
+                    t_s <- seq_along(1:d_season[season==i,.N])
+                    emerg_curve <- sim_emerg_curve(t_s,PeakPos=PeakPos[GenSim],sdPeak=sdPeak[GenSim],sig=sig[GenSim],bet=bet[GenSim])
+                    emerg_count <- sim_emerg_count(emerg_curve,TotalEmerg=TotalEmerg[GenSim])
+                    adult_count <- sim_adult_count(emerg_count,MaxLife=MaxLife[GenSim])
+                    d_season[season==i,count:=adult_count[1:d_season[season==i,.N]]]
+            }
+        
+        cumul_count <- cumul_count + d_season[,count]
+        GenSim <- GenSim+1
+
+        }
+
+    d_season[,count:=cumul_count]
+
+    return(d_season)
+
+}
+
+# sim_monitoring_visit() simulates monitoring visits by volunteers, based on monitoring frequency set by the protocol c('weekly','fortnightly','monthly')
+
+sim_monitoring_visit <- function(d_season, MonitoringFreq=c('weekly')){
+
+    if(MonitoringFreq=='weekly'){
+
+        is_even <- (d_season[season!=0,day_since][1]) %% 2 == 0
+        monitoring_day <- d_season[season!=0 & (day_since %% 2 == 0)==is_even,sample(day_since,1),by=.(season_year,week)][,V1]
+    
+    }
+
+    if(MonitoringFreq=='fortnightly'){
+        
+        is_even <- (d_season[season!=0,week][1]) %% 2 == 0
+        monitoring_day <- d_season[season!=0 & (week %% 2 == 0)==is_even,sample(day_since,1),by=.(season_year,week)][,V1]
+    
+    }
+
+    if(MonitoringFreq=='monthly'){
+
+        monitoring_day <- d_season[season!=0,sample(day_since,1),by=.(season_year,month)][,V1]
+    
+    }
+
+    return(monitoring_day)
+
+}
+
+
+sim_monitoring_visit(d_season,'monthly')
+
+monitoring_day <- d_season[complete_season!=0,sample(day_since,1),by=.(season_year,week)]
+
+d_season[day_since %in% monitoring_day$V1,monitored_count:=count]
+
+## test SIMULATION functions
+
+par(mfrow=c(2,2))
+
+for (t in 1:4){
+    e <- sim_emerg_curve(1:100,50,sig=1,bet=10)
+plot(1:100,e)
+    c <- sim_emerg_count(e,100)
+plot(1:100,c,,main=paste(sum(c),'realized emergences'))
+points(1:100,100*e,col='red',pch=19)
+    a1 <- sim_adult_count(c,MaxLife=10)
+plot(seq_along(a1),a1,main=paste(sum(a1),'cumulative adult counts (b1)'))
+
+    e <- sim_emerg_curve(1:100,70,sig=0.5,bet=2)
+    c <- sim_emerg_count(e,100)
+    a2 <- sim_adult_count(c,MaxLife=10)
+plot(seq_along(1:max(length(a1),length(a2))),a1+a2,main=paste(sum(c(a1,a2)),'cumulative adult counts b1+2'))
+
+    }
+
+# ## load monitoring visit and fixing dates
+
+m_visit <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK Visits Table.txt",header=TRUE)
+m_visit[,VISIT_DATE:=data.table::as.IDate(as.Date(m_visit$VISIT_DATE,format="%d-%b-%y"))]
+
+m_count <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK CountsTable.txt",header=TRUE)
+m_count[,VISIT_DATE:=data.table::as.IDate(as.Date(m_count$VISITDATE,format="%d/%m/%Y"))][,VISITDATE:=NULL]
+
+section_geo <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK Sections Table.txt",header=TRUE)
+section_geo_sp <- section_geo[!is.na(section_geo$EAST)]
+sp::coordinates(section_geo_sp) <- ~ EAST + NORTH
+
+
+## test full time series allocation with real data 
+
+m_count[,max(data.table::year(VISIT_DATE))]
+
+d <- ts_dwmy_table(2015)
+d_season <- ts_monit_season(d,4,9)
+d_series <- ts_site_visit(m_visit, d_season)
+c_t_day <- b_count_perday(m_count,m_visit)
+c_site_series <- ts_count_site_visit(sp=2,d_series,c_t_day)
+
+c_site_series[year==1997 & count==0,site]
 
 ## object size check
-sort( sapply(c('d.series','d.series2'),function(x){object.size(get(x))}))
+sort(sapply(c('d_series'),function(x){object.size(get(x))}))
+
+
+
+
+d_series <- ts_dwmy_table(2017)
+d_season <- ts_monit_season(d_series,4,9)
+
+par(mfrow=c(2,2))
+for(sim in 1:4){
+ d_season_count <- sim_butterfly_count(d_season,GenNumb=2,PeakPos=c(25,65),TotalEmerg=c(100,200))
+ plot(d_season_count$day_since,d_season_count$count,type='l',col='magenta')
+
+ m_day <- sim_monitoring_visit(d_season,'weekly')
+ points(m_day,d_season_count$count[m_day],pch=19,col='red')
+
+ m_day <- sim_monitoring_visit(d_season,'fortnightly')
+ points(m_day,d_season_count$count[m_day],pch=19,col='blue')
+}
+
+cbind(d_season_count$day_since[m_day],m_day)
+
+monitoring_day <- d_season[complete_season!=0,sample(day_since,1),by=.(season_year,week)]
+d_season[day_since %in% monitoring_day$V1,monitored_count:=count]
+
+par(mfrow=c(1,2))
+plot(d_season[complete_season!=0,sum(count),by=season_year])
+plot(d_season[complete_season!=0,sum(monitored_count,na.rm=TRUE),by=season_year])
+
+plot(d_season$day_since,d_season$count,col='magenta',pch=19,type='l')
+points(d_season$day_since,d_season$monitored_count,col='blue',pch=19)
+
+monitoring_day <- d_season[season!=0,sample(day_since,1),by=.(season_year,week)]
+points(monitoring_day$V1,rep(0,length(monitoring_day$V1)))
+
+
+
+DT[,.SD[sample(.N,3)],by = a]
+
+###########################################
 
 
 ### SF build map
 
-build_map_obj <- function(region=c('Africa','Antarctica','Americas','Asia','Europe','Oceania','Russia'),gadm_World=gadm_World,level=0) {
+build_map_obj <- function(region=c('Africa','Antarctica','Americas','Asia','Europe','Oceania','Russia'),GadmWorld=GadmWorld,level=0) {
 
     iso_code <- region[nchar(region)==3]
 
@@ -200,13 +434,13 @@ build_map_obj <- function(region=c('Africa','Antarctica','Americas','Asia','Euro
                                         'Africa,','Antarctica,','Americas,','Asia,','Europe,','Oceania or','Russia','\n'))}
 
 
-    gadm.set <- gadm_World[(unregion2 %in% region_name | iso3 %in% iso_code) & !is.na(unregion2),]
+    gadm_set <- GadmWorld[(unregion2 %in% region_name | iso3 %in% iso_code) & !is.na(unregion2),]
 
-    for (i in seq_along(unlist(gadm.set[,iso3]))){
+    for (i in seq_along(unlist(gadm_set[,iso3]))){
 
-        cat(unlist(gadm.set[,name_english][i]),"\n")
+        cat(unlist(gadm_set[,name_english][i]),"\n")
 
-        country_sf <- sf::st_as_sf(raster::getData(name = "GADM", country = gadm.set[,iso3][i], level = level))
+        country_sf <- sf::st_as_sf(raster::getData(name = "GADM", country = gadm_set[,iso3][i], level = level))
 
             if (i == 1) {
                 combined_sf <- country_sf
@@ -220,102 +454,10 @@ return(combined_sf)
 
 }
 
-### SIMULATE DATA
-
-### e_curve() estimates an emergence curve shape following a logistic distribution along a time series [t_series], with peak position [peak_pos] relative along a  , 
-### vector using the percentile and a standard deviation around the peak [sd_peak] in days, with two shape parameters
-### sigma [sig] for left or right skewness (left when > 1, right when < 1, logistic when  = 1) and bet [bet] for a scale parameter. 
-
-### return a vector of relative emergence along a vector of length t.
-
-### Calabrese, J.M. (2012) How emergence and death assumptions affect count-based estimates of butterfly abundance and lifespan. Population Ecology, 54, 431–442.
-
-
-e_curve <- function (t_series, peak_pos=50, sd_peak=1, sig=0.15, bet=3) {
-               
-            # EMERGENCE 1
-                
-            # peak + sample 1 from normal distribution (0,sd)
-            u1 <- round(peak_pos * length(t_series)/100) + rnorm(1, 0, sd_peak)
-
-            # Logistic with 
-            fE1 <- (sig * (exp((t_series - u1)/bet)))/(bet * (1 + exp((t_series - u1)/bet)))^(sig + 1)
-                
-            # Standardize to AUC 1
-            sdfe <- fE1/sum(fE1)  
-
-            return(sdfe)
-            
-            }
-
-### c_curve simulate emergence of n adults [tot_emerg] according a emergence curve [sdfe] using a Poisson process
-
-c_curve <- function(sdfe, tot_emerg=100) {
-
-            N <- unlist(lapply(tot_emerg*sdfe,function(x) {rpois(1,x)}))
-
-            return(N)
-
-            }
-
-### a_curve simulate the number of adults in a population, according to individual maximum life span [max_life] and daily
-### mortality risk based on a beta distribution with shape_a and shape_b parameters
-
-a_curve <- function(N, max_life=15, shape_a=0.5, shape_b=0.2){
-
-           c_mat <- matrix(0,nrow=length(N),ncol=length(N)+max_life+1)
-
-           ## daily hazard and decay (beta distribution)
-
-           M_haz <- c(0,diff(pbeta(seq(0,1,(1/max_life)),shape_a,shape_b)),1)
-        
-           for (i in seq_along(N)){
-
-                s <- N[i]
-                y=2
-                l=s
-
-                while(s > 0 & y <= max_life+2){
-                    s <- s-rbinom(1,s,M_haz[y])
-                    y <- y+1
-                    l <- c(l,s)
-                    }
-
-                c_mat[i,i:(i+length(l)-1)] <- l
-
-                }
-
-            return(colSums(c_mat))
-
-            }
-
-## test
-
-par(mfrow=c(2,2))
-
-for (t in 1:4){
-    e <- e_curve(1:100,50,sig=0.5,bet=3)
-plot(1:100,e)
-    c <- c_curve(e,100)
-plot(1:100,c,,main=paste(sum(c),'realized emergences'))
-points(1:100,100*e,col='red',pch=19)
-    a1 <- a_curve(c,max_life=10)
-plot(seq_along(a1),a1,main=paste(sum(a1),'cumulative adult counts (b1)'))
-
-    e <- e_curve(1:100,60,sig=0.5,bet=2)
-    c <- c_curve(e,100)
-    a2 <- a_curve(c,max_life=10)
-plot(seq_along(1:max(length(a1),length(a2))),a1+a2,main=paste(sum(c(a1,a2)),'cumulative adult counts b1+2'))
-
-    }
-
-
-
-###########################################
 
 ## test package sf
 
-###build initial data set
+###build initial data set that should be included in the package's data set
 system.time(gadm28 <- sf::st_read("C:/Users/RETOSCHM/Downloads/gadm28_levels.shp/gadm28_adm0.shp"))
 
 gadm_World <- data.table::data.table( name_english    = as.character(gadm28$NAME_ENGLI),
