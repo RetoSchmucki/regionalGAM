@@ -5,6 +5,8 @@
 ##      ARGUMENT: CamelNotation
 ##      OBJECT: object_snake_name
 ##
+##      Date: 20.07.2017
+##
 ##==========================================
 
 ###  ts_date_seq  function to build a full time series sequence of date since initial year to an ending year
