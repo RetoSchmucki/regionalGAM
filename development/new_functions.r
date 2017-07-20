@@ -101,6 +101,9 @@ ts_monit_season = function(d_series,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NU
         return(d_series)
     }
 
+
+
+
 ### ts_site_visit function to initialize a time series with all visit and site with "zeros" while leaving all non visited day 
 ###                 with an <NA>, this can then be used to add the observed count for specific species
 ###                 only have time series for years when a site has been monitored.
