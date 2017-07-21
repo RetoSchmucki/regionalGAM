@@ -1,4 +1,5 @@
 ## sandbox for testing new development for regionalGAM
+## Date: 21.07.2017
 
 ## NEED TO SOURCE new_functions.r
 
@@ -30,7 +31,7 @@ c_site_series[year==1997 & count==0,site]
 ## object size check
 sort(sapply(c('d_series'),function(x){object.size(get(x))}))
 
-d_series <- ts_dwmy_table(2017)
+d_series <- ts_dwmy_table(2008,2015)
 d_season <- ts_monit_season(d_series,4,9)
 
 par(mfrow=c(2,2))
@@ -45,22 +46,16 @@ for(sim in 1:4){
  points(m_day,d_season_count$count[m_day],pch=19,col='blue')
 }
 
-cbind(d_season_count$day_since[m_day],m_day)
-
-monitoring_day <- d_season[complete_season!=0,sample(day_since,1),by=.(season_year,week)]
-d_season[day_since %in% monitoring_day$V1,monitored_count:=count]
+monitoring_day <- d_season_count[full_season!=0,sample(day_since,1),by=.(season_year,week)]
+d_season_count[day_since %in% monitoring_day$V1,monitored_count:=count]
 
 par(mfrow=c(1,2))
-plot(d_season[complete_season!=0,sum(count),by=season_year])
-plot(d_season[complete_season!=0,sum(monitored_count,na.rm=TRUE),by=season_year])
+plot(d_season_count[full_season!=0,sum(count),by=season_year])
+plot(d_season_count[full_season!=0,sum(monitored_count,na.rm=TRUE),by=season_year])
 
-plot(d_season$day_since,d_season$count,col='magenta',pch=19,type='l')
-points(d_season$day_since,d_season$monitored_count,col='blue',pch=19)
+plot(d_season_count$day_since,d_season_count$count,col='magenta',pch=19,type='l')
+points(d_season_count$day_since,d_season_count$monitored_count,col='blue',pch=19)
 
-monitoring_day <- d_season[season!=0,sample(day_since,1),by=.(season_year,week)]
-points(monitoring_day$V1,rep(0,length(monitoring_day$V1)))
-
-DT[,.SD[sample(.N,3)],by = a]
 
 ## test SIMULATION functions
 
@@ -110,6 +105,12 @@ gadm_World[unregion2=='Antartica',c("unregion2"):='Antarctica']
 
 write.csv(gadm_World,"W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/reto_workfiles/ebms_database/data/gadm_world.csv",row.names=FALSE)
 
+GadmWorld <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/reto_workfiles/ebms_database/data/gadm_world.csv",header=TRUE)
+
 ## build Europe
 
 region=c('Africa','GBR','CHE')
+
+my_map <- build_map_obj(region,GadmWorld,level=0)
+
+plot(my_map$geometry,col=seq_along(my_map$ISO))
