@@ -20,6 +20,59 @@ section_geo_sp <- section_geo[!is.na(section_geo$EAST)]
 sp::coordinates(section_geo_sp) <- ~ EAST + NORTH
 
 
+### Test New Workflow with monitoring_year as main year indicator
+
+## we need two tables; 1) visits and 2) counts
+## here we will use count per transect where transect are used as SITE_ID
+## =====
+## 1. load and organize data sets
+m_visit <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK Visits Table.txt",header=TRUE)
+data.table::setnames(m_visit,"SITENO","SITE_ID"); data.table::setnames(m_visit,"VISIT_DATE","DATE")
+m_visit[,DATE:=data.table::as.IDate(as.Date(m_visit$DATE,format="%d-%b-%y"))]
+
+## standardize the number of visit per date for each site to one
+nbr_visitperday <- m_visit[,.N,by=.(SITE_ID,DATE)]
+data.table::setkey(nbr_visitperday,SITE_ID,DATE)
+data.table::setkey(m_visit,SITE_ID,DATE)
+m_visit <- unique(m_visit[,.(SITE_ID,DATE)])
+
+m_count <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK CountsTable.txt",header=TRUE)
+data.table::setnames(m_count,"SITENO","SITE_ID"); data.table::setnames(m_count,"VISITDATE","DATE")
+m_count[,DATE:=data.table::as.IDate(as.Date(m_count$DATE,format="%d/%m/%Y"))][,SECTION:=NULL]
+m_count[,COUNT:=sum(COUNT),by=.(SITE_ID,SPECIES,DATE,DAY,MONTH,YEAR)]
+data.table::setkey(m_count)
+m_count <- unique(m_count)
+m_count <- m_count[!is.na(SITE_ID) & !is.na(SPECIES) & !is.na(DATE) & !is.na(COUNT),]
+
+## standardize the count for one visit per date and site, using the average if multiple visits 
+data.table::setkey(m_count,SITE_ID,DATE)
+m_count <- merge(m_count,nbr_visitperday,all.x=FALSE)        ## delete every count that have not been included in the visits
+m_count[,COUNT:=ceiling(COUNT/N)][N:=1]
+
+## =====
+## 2. build a long time-series to cover all days for the period we are interested in
+
+ts_date <- ts_dwmy_table(InitYear=2000,LastYear=2015,WeekDay1='monday')
+ts_season <- ts_monit_season(ts_date,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NULL,CompltSeason=TRUE,Anchor=TRUE,AnchorLength=7,AnchorLag=7)
+m_visit <- df_visit_season(m_visit,ts_season)
+ts_season_visit <- ts_monit_site(ts_season,m_visit)
+
+m_count[order(SPECIES),unique(SPECIES)]
+
+ts_season_count <- ts_monit_count_site(ts_season_visit,m_count,sp=2)
+ts_flight_curve <- flight_curve(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,GamFamily='poisson',CompltSeason=TRUE)
+
+plot(ts_flight_curve[M_YEAR==2000,trimDAYNO],ts_flight_curve[M_YEAR==2000,NM],type='l')
+for(y in 2001:2015){
+    points(ts_flight_curve[M_YEAR==y,trimDAYNO],ts_flight_curve[M_YEAR==y,NM],type='l',col='red')
+}
+site_year_sp_index <- abundance_index(ts_season_count,ts_flight_curve)
+
+
+
+
+
+
 ## test full time series allocation with real data 
 
 m_count[,max(data.table::year(VISIT_DATE))]
