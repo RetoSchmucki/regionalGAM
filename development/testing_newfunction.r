@@ -46,29 +46,36 @@ m_count <- m_count[!is.na(SITE_ID) & !is.na(SPECIES) & !is.na(DATE) & !is.na(COU
 
 ## standardize the count for one visit per date and site, using the average if multiple visits 
 data.table::setkey(m_count,SITE_ID,DATE)
-m_count <- merge(m_count,nbr_visitperday,all.x=FALSE)        ## delete every count that have not been included in the visits
-m_count[,COUNT:=ceiling(COUNT/N)][N:=1]
+m_count <- merge(m_count,nbr_visitperday,all.x=FALSE)        ## delete counts that are not included in the visits
+m_count[,COUNT:=ceiling(COUNT/N)][,N:=1]
 
 ## =====
 ## 2. build a long time-series to cover all days for the period we are interested in
 
-ts_date <- ts_dwmy_table(InitYear=2000,LastYear=2015,WeekDay1='monday')
+ts_date <- ts_dwmy_table(InitYear=2010,LastYear=2012,WeekDay1='monday')
 ts_season <- ts_monit_season(ts_date,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NULL,CompltSeason=TRUE,Anchor=TRUE,AnchorLength=7,AnchorLag=7)
 m_visit <- df_visit_season(m_visit,ts_season)
 ts_season_visit <- ts_monit_site(ts_season,m_visit)
 
 m_count[order(SPECIES),unique(SPECIES)]
 
-ts_season_count <- ts_monit_count_site(ts_season_visit,m_count,sp=2)
-ts_flight_curve <- flight_curve(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,GamFamily='poisson',CompltSeason=TRUE)
+ts_season_count <- ts_monit_count_site(ts_season_visit,m_count,sp=4)
+ts_flight_curve <- flight_curve(ts_season_count,NbrSample=200,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,GamFamily='poisson',CompltSeason=TRUE)
 
-plot(ts_flight_curve[M_YEAR==2000,trimDAYNO],ts_flight_curve[M_YEAR==2000,NM],type='l')
-for(y in 2001:2015){
-    points(ts_flight_curve[M_YEAR==y,trimDAYNO],ts_flight_curve[M_YEAR==y,NM],type='l',col='red')
+
+plot(ts_flight_curve[M_YEAR==2010,trimDAYNO],ts_flight_curve[M_YEAR==2010,NM],type='l')
+c <- 1
+for(y in 2011:2015){
+    points(ts_flight_curve[M_YEAR==y,trimDAYNO],ts_flight_curve[M_YEAR==y,NM],type='l',col=c)
+    c <- c + 1
 }
+
 site_year_sp_index <- abundance_index(ts_season_count,ts_flight_curve)
+butterfly_index <- butterfly_day(site_year_sp_index,method=c('fitted'))
+butterfly_index[V1>200,.N]
 
-
+plot(site_year_sp_index[SITE_ID==1 & M_YEAR==2012,trimDAYNO],site_year_sp_index[SITE_ID==1 & M_YEAR==2012,FITTED],ylim=c(0,5))
+points(site_year_sp_index[SITE_ID==1 & M_YEAR==2012,trimDAYNO],site_year_sp_index[SITE_ID==1 & M_YEAR==2012,COUNT_IMPUTED],col='red')
 
 
 
@@ -97,8 +104,8 @@ points(f_curve_series[SEASON_YEAR==2012,trimDAYNO],f_curve_series[SEASON_YEAR==2
 points(f_curve_series[SEASON_YEAR==2013,trimDAYNO],f_curve_series[SEASON_YEAR==2013,NM],col='magenta',type='l')
 points(f_curve_series[SEASON_YEAR==2015,trimDAYNO],f_curve_series[SEASON_YEAR==2015,NM],col='goldenrod',type='l')
 
-## object size check
-sort(sapply(c('d_series'),function(x){object.size(get(x))}))
+## object size checkS
+sort(sapply(ls(),function(x){object.size(get(x))}))
 
 par(mfrow=c(2,2))
 d <- ts_dwmy_table(2014,2015)

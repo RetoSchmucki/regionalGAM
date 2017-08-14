@@ -141,15 +141,16 @@ ts_monit_season = function(d_series,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NU
 ## df_visit_season function identify the monitoring season for each visit, the M_YEAR should then be used as reference to 
 ##              identify the site that have been monitored in specific monitoring year
 
-df_visit_season <- function(m_visit,m_season){
+df_visit_season <- function(m_visit,ts_season){
         
         names(m_visit) <- toupper(names(m_visit))
-        check_names(m_visit,c("DATE"))
+        check_names(m_visit,c("DATE","SITE_ID"))
+        m_visit <- data.table::copy(m_visit[,.(DATE,SITE_ID)])
 
-        names(m_season) <- toupper(names(m_season))
-        check_names(m_season,c("DATE","M_YEAR"))
+        names(ts_season) <- toupper(names(ts_season))
+        check_names(ts_season,c("DATE","M_YEAR"))
 
-        season_year <- m_season[,.(DATE,M_YEAR)] 
+        season_year <- ts_season[,.(DATE,M_YEAR)] 
 
         data.table::setkey(m_visit,DATE)
         data.table::setkey(season_year,DATE)
@@ -338,18 +339,21 @@ flight_curve <- function(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,Min
 
 
 abundance_index <- function(ts_season_count,ts_flight_curve) {
-
+   
+    if(exists("sp_ts_season_count")) {rm("sp_ts_season_count")}
+    
     sp_ts_season_count <- data.table::copy(ts_season_count)
     sp_ts_season_count[,SPECIES:=ts_flight_curve$SPECIES[1]]
+
     data.table::setkey(sp_ts_season_count,DATE)
     data.table::setkey(ts_flight_curve,DATE)
 
-    sp_count_flight <- merge(sp_ts_season_count,ts_flight_curve[,.(DATE,trimDAYNO,NM)],by.x="DATE",by.y="DATE",all.x=TRUE)
+    sp_count_flight <- merge(sp_ts_season_count,ts_flight_curve[,.(DATE,trimDAYNO,NM)],all.x=TRUE)
     data.table::setkey(sp_count_flight,M_YEAR,DATE,SITE_ID)
 
     for(y in sp_count_flight[,unique(as.integer(M_YEAR))]){
         
-        sp_count_flight_y <- sp_count_flight[as.integer(M_YEAR)==y,]
+        sp_count_flight_y <-  data.table::copy(sp_count_flight[as.integer(M_YEAR)==y,])
         print(paste("Computing abundance indices for species",sp_count_flight_y[1,SPECIES],"monitored in year", sp_count_flight_y[1,M_YEAR],"across",sp_count_flight_y[unique(SITE_ID),.N],"sites:",Sys.time()))
         
         if(sp_count_flight_y[is.na(NM),.N]>0){
@@ -371,40 +375,67 @@ abundance_index <- function(ts_season_count,ts_flight_curve) {
         }
 
         sp_count_flight_y[M_SEASON==0L,COUNT:=NA]
-        non_zeros <- sp_count_flight_y[,sum(COUNT,na.rm=TRUE),by=(SITE_ID)][V1>0,SITE_ID]
-        zeros <- sp_count_flight_y[,sum(COUNT,na.rm=TRUE),by=(SITE_ID)][V1==0,SITE_ID]
+        sp_count_flight_y[M_SEASON!=0L & NM==0,NM:=0.000001]
+        non_zero <- sp_count_flight_y[,sum(COUNT,na.rm=TRUE),by=(SITE_ID)][V1>0,SITE_ID]
+        zero <- sp_count_flight_y[,sum(COUNT,na.rm=TRUE),by=(SITE_ID)][V1==0,SITE_ID]
 
-        if(sp_count_flight_y[unique(SITE_ID),.N]>1){
-            glm_obj_site <- try(glm(COUNT ~ factor(SITE_ID) + offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zeros,],
-                family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
-        } else {
-            glm_obj_site <- try(glm(COUNT ~ offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zeros,],
-                family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
+        if(length(non_zero)>1){
+            if(sp_count_flight_y[unique(SITE_ID),.N]>1){
+                glm_obj_site <- try(glm(COUNT ~ factor(SITE_ID) + offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
+                    family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
+            } else {
+                glm_obj_site <- try(glm(COUNT ~ offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
+                    family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
+            }
         }
 
         if (class(glm_obj_site)[1] == "try-error") {
-            sp_count_flight_y[,c("FITTED","COUNT_IMPUTED"),c(NA,NA)]
-            next(paste("Computation of abudance indices for year",sp_count_flight_y[1,M_YEAR,],"failled with the RegionalGAM, verify the data you provided for that year"))
+            sp_count_flight_y[SITE_ID %in% non_zero,c("FITTED","COUNT_IMPUTED"):=.(NA,NA)]
+            print(paste("Computation of abudance indices for year",sp_count_flight_y[1,M_YEAR,],"failled with the RegionalGAM, verify the data you provided for that year"))
+            next()
         }else{
-            sp_count_flight_y[SITE_ID %in% non_zeros,FITTED:= predict.glm(glm_obj_site,newdata=sp_count_flight_y[SITE_ID %in% non_zeros,],type = "response")]
-            sp_count_flight_y[SITE_ID %in% zeros,FITTED:=0]
-            sp_count_flight_y[is.na(COUNT),COUNT_IMPUTED:=FITTED][!is.na(COUNT),COUNT_IMPUTED:=as.numeric(COUNT)][M_SEASON==0L,COUNT_IMPUTED:=0]        
-            data.table::setkey(sp_count_flight_y,M_YEAR,DATE,SITE_ID)
-### need to feed in the original FITTED AND COUNT_IMPUTED           sp_ts_season_count[sp_count_flight_y,FITTED:=sp_count_flight_y[,FITTED]]
-          
+            sp_count_flight_y[SITE_ID %in% non_zero,FITTED:= predict.glm(glm_obj_site,newdata=sp_count_flight_y[SITE_ID %in% non_zero,],type = "response")]
+        }
+
+        sp_count_flight_y[SITE_ID %in% zero,FITTED:=0]
+        sp_count_flight_y[is.na(COUNT),COUNT_IMPUTED:=FITTED][!is.na(COUNT),COUNT_IMPUTED:=as.numeric(COUNT)][M_SEASON==0L,COUNT_IMPUTED:=0] 
+
+        data.table::setkey(sp_ts_season_count,SITE_ID,DAY_SINCE)
+        data.table::setkey(sp_count_flight_y,SITE_ID,DAY_SINCE)
+
+        if("FITTED" %in% names(sp_ts_season_count)){
+            sp_ts_season_count[sp_count_flight_y,':='(trimDAYNO=i.trimDAYNO,NM=i.NM,FITTED=i.FITTED,COUNT_IMPUTED=i.COUNT_IMPUTED)]
+        }else{
+            sp_ts_season_count <- merge(sp_ts_season_count, sp_count_flight_y[,.(DAY_SINCE,SITE_ID,trimDAYNO,NM,FITTED,COUNT_IMPUTED)], all.x=TRUE) 
         }
     }
 
-    butterfly_day <- sp_ts_season_count[,sum(COUNT_IMPUTED),by=.(SPECIES,M_YEAR,SITE_ID)]
+    return(sp_ts_season_count)
+} 
 
-    return(butterfly_day)
+
+butterfly_day <- function(sp_ts_season_count,method=c('fitted')){
+
+    if(method=='fitted'){
+        b_day <- sp_ts_season_count[,sum(FITTED),by=.(SPECIES,M_YEAR,SITE_ID)]
+    }
+
+    if(method=='count_imputed'){
+        b_day <- sp_ts_season_count[,sum(COUNT_IMPUTED),by=.(SPECIES,M_YEAR,SITE_ID)]
+    }
+
+    return(b_day)
 }
 
-sp_ts_season_count[M_YEAR==2000 & SITE_ID==1,FITTED]
+# sp_ts_season_count[M_YEAR==2000 & SITE_ID==1,FITTED]
 
-
-
-
+a <- data.table::data.table(site_id=1:5,year=2003:2007,value="C")
+b <- data.table::data.table(site_id=3:4,year=2005,value=c("A","B"))
+b
+data.table::setkey(a,site_id,year)
+data.table::setkey(b,site_id,year)
+a[b,':='(value=i.value)]
+a
 # ### OUTDATED
 # ### fd_count_perday function to format data of the butterfly species count for one visit per day. Two options,
 # ###                 use the mean rounded to the higher integer or delete site where count could
