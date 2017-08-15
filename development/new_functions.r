@@ -172,36 +172,34 @@ df_visit_season <- function(m_visit,ts_season,DateFormat="%Y-%m-%d"){
 ###                 with and <NA>, this can then be used to add the observed count for specific species
 ###                 only have time series for years when a site has been monitored.
 
-ts_monit_site = function(m_season,m_visit,DateFormat="%Y-%m-%d") {
+ts_monit_site = function(m_visit,ts_season,DateFormat="%Y-%m-%d") {
 
-            names(m_season) <- toupper(names(m_season))
-            check_names(m_season,c("DATE","M_YEAR","M_SEASON"))
+            names(ts_season) <- toupper(names(ts_season))
+            check_names(ts_season,c("DATE","M_YEAR","M_SEASON"))
 
-            names(m_visit) <- toupper(names(m_visit))
-            check_names(m_visit,c("DATE","M_YEAR","SITE_ID"))
-            m_visit[,DATE:=data.table::as.IDate(as.Date(m_visit$DATE,format=DateFormat))]
+            m_visit <- df_visit_season(m_visit,ts_season,DateFormat=DateFormat)
 
-            data.table::setkey(m_season,DATE)
+            data.table::setkey(ts_season,DATE)
             data.table::setkey(m_visit,DATE)
 
-            r_year <- m_season[,range(data.table::year(DATE))]
-            m_visit <- m_visit[DATE %in% m_season[M_SEASON>0L,DATE],]
+            r_year <-ts_season[,range(data.table::year(DATE))]
+            m_visit <- m_visit[DATE %in% ts_season[M_SEASON>0L,DATE],]
         
             monit_syl <- m_visit[data.table::year(DATE)>=min(r_year) & 
                         data.table::year(DATE)<=max(r_year),
                         .(SITE_ID=.SD[,unique(SITE_ID)]),by=M_YEAR]
 
             data.table::setkey(monit_syl,M_YEAR,SITE_ID)
-            data.table::setkey(m_season,M_YEAR)
+            data.table::setkey(ts_season,M_YEAR)
 
-            m_season_site <- merge(m_season,monit_syl,by.x="M_YEAR",by.y="M_YEAR",allow.cartesian=TRUE)
+            ts_season_site <- merge(ts_season,monit_syl,by.x="M_YEAR",by.y="M_YEAR",allow.cartesian=TRUE)
 
-            data.table::setkey(m_season_site,DATE,SITE_ID)
+            data.table::setkey(ts_season_site,DATE,SITE_ID)
             data.table::setkey(m_visit,DATE,SITE_ID)
 
-            m_season_site <- m_season_site[m_visit,COUNT:=0L][M_SEASON==0L & ANCHOR==0L,COUNT:=NA]
+            ts_season_site <- ts_season_site[m_visit,COUNT:=0L][M_SEASON==0L & ANCHOR==0L,COUNT:=NA]
 
-        return(m_season_site)
+        return(ts_season_site)
 
     }
   

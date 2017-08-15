@@ -63,12 +63,12 @@ data.table::fwrite(c,file="m_count.csv",row.names=FALSE)
 # THAT HAVE BEEN MONITORED BETWEEN 2000 AND 2004 IN 140 sites across the UK
 # THE MONITORING SEASON WAS FROM APRIL TO SEPTEMBER (e.g. 4 to 9), BUT FOR DEMONSTRATION
 # YOU CAN GIVE IT A TRY IT FOR NOVEMBER TO AUGUST (e.g. 11 to 8) AND IT SHOULD WORK.
-
+setwd("C:/Users/RETOSCHM/OneDrive - Natural Environment Research Council/regionalGAM/development")
 source(new_regionalgam_function.r)
 
 ### load your data monitoring visit and butterfly count.
-m_visit <- data.table::fread("m_visit.csv",header=TRUE)
-m_count <- data.table::fread("m_count.csv",header=TRUE)
+m_visit <- data.table::fread("new_regionalgam/m_visit.csv",header=TRUE)
+m_count <- data.table::fread("new_regionalgam/m_count.csv",header=TRUE)
 
 ### IMPORTANT! all function are now build on the data.table framework, so if your data are not in this format (e.g. data.frame), you need to convert them first.
 ## this is only required if you do not used data.table to load your data. Here is how it should be done
@@ -84,12 +84,13 @@ ts_date <- ts_dwmy_table(InitYear=2000,LastYear=2005,WeekDay1='monday')
 
 ## Define your monitoring season, with StartMonth and EndMonth, StartDay and EndDay, if EndDay is not defined, the last day of the month
 ## will be used. If CompltSeason is set to TRUE, only these year with full monitoring season will be used. Anchor are extra zeros set at the
-## begining and the end of the season to help closing the curve (length and lag are defining the weight of the Anchor) 
+## beginning and the end of the season to help closing the curve (length and lag are defining the weight of the Anchor) 
+
 ts_season <- ts_monit_season(ts_date,StartMonth=11,EndMonth=8,StartDay=1,EndDay=NULL,CompltSeason=TRUE,Anchor=TRUE,AnchorLength=7,AnchorLag=7)
 
-## The following two step need to done in this order
-m_visit <- df_visit_season(m_visit,ts_season)
-ts_season_visit <- ts_monit_site(ts_season,m_visit)
+## FIXED The following two step need to done in this order
+## m_visit <- df_visit_season(m_visit,ts_season)
+ts_season_visit <- ts_monit_site(m_visit,ts_season,DateFormat="%Y-%m-%d")
 
   # check the species available in your data set
   m_count[order(SPECIES),unique(SPECIES)]
