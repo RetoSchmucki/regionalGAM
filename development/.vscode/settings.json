@@ -1,3 +1,22 @@
 {
-    "r.lintr.enabled": false
+    "r.lintr.enabled": false,
+    "cSpell.enabledLanguageIds": [
+        "c",
+        "cpp",
+        "csharp",
+        "go",
+        "javascript",
+        "javascriptreact",
+        "json",
+        "latex",
+        "markdown",
+        "php",
+        "plaintext",
+        "python",
+        "r",
+        "text",
+        "typescript",
+        "typescriptreact",
+        "yml"
+    ]
 }
