@@ -12,6 +12,39 @@
 ##
 ##==========================================
 
+
+### check_datatable function to verify if the data.table package is installed
+
+check_data.table <- function(){
+        if("data.table" %in% installed.packages() == "FALSE") {
+            print("data.table package is not installed.")
+            x <- readline("Do you want to install it? Y/N")            
+            if (toupper(x) == 'Y') { 
+                    install.packages("data.table")
+            }
+            if (toupper(x) == 'N') {
+                print("This version does not work without data.table, sorry")
+            }
+        }
+    }
+
+### check_speedglm function to verify if the speedglm package is installed
+
+check_speedglm <- function(SpeedGlm){
+        if(isTRUE(SpeedGlm)){
+            if("speedglm" %in% installed.packages() == "FALSE") {
+                print("speedglm package is not installed.")
+                x <- readline("Do you want to install it? Y/N")                
+                if (toupper(x) == 'Y') { 
+                        install.packages("speedglm")
+                }
+                if (toupper(x) == 'N') {
+                    SpeedGlm <- FALSE
+                    print("Without the speedglm package, we will use the base GLM function, sorry")
+                }
+            }
+        }
+    }
 ### check_names function is a generic function to verify if the provided data.table contains the required column names
 
 check_names <- function(x, y){
@@ -45,8 +78,11 @@ ts_date_seq = function(InitYear=1970,LastYear=format(Sys.Date(),"%Y")) {
 ###         months and years to subset a time-series template for specified monitoring season,
 ###         independent of the year
 
+## alternative name -> build_ts
+
 ts_dwmy_table = function(InitYear=1970,LastYear=format(Sys.Date(),"%Y"),WeekDay1='monday') {
-    
+
+        check_data.table()
         date_seq <- ts_date_seq(InitYear,LastYear)
 
         if(WeekDay1=='monday'){
@@ -98,8 +134,11 @@ set_anchor <- function(FirstObs,LastObs,AnchorLength=7,AnchorLag=7){
 ##      named according to the year at the start. Here the monitoring season is set in the middle or year' to give some room to set ANCHORs  before and after the monitoring 
 ##      season.
 
+## alternative name -> align_season_ts
+
 ts_monit_season = function(d_series,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NULL,CompltSeason=TRUE,Anchor=TRUE,AnchorLength=7,AnchorLag=7){
         
+        check_data.table()
         d_series <- data.table::copy(d_series)
 
         names(d_series) <- toupper(names(d_series))
@@ -149,13 +188,9 @@ ts_monit_season = function(d_series,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NU
 
 df_visit_season <- function(m_visit,ts_season,DateFormat="%Y-%m-%d"){
             
-            names(m_visit) <- toupper(names(m_visit))
-            check_names(m_visit,c("DATE","SITE_ID"))
+            check_data.table()
             m_visit <- data.table::copy(m_visit[,.(DATE,SITE_ID)])
             m_visit[,DATE:=data.table::as.IDate(as.Date(m_visit$DATE,format=DateFormat))]
-
-            names(ts_season) <- toupper(names(ts_season))
-            check_names(ts_season,c("DATE","M_YEAR"))
 
             season_year <- ts_season[,.(DATE,M_YEAR)] 
 
@@ -172,10 +207,16 @@ df_visit_season <- function(m_visit,ts_season,DateFormat="%Y-%m-%d"){
 ###                 with and <NA>, this can then be used to add the observed count for specific species
 ###                 only have time series for years when a site has been monitored.
 
+## alternative name -> align_visit_season
+
 ts_monit_site = function(m_visit,ts_season,DateFormat="%Y-%m-%d") {
 
+            check_data.table()
             names(ts_season) <- toupper(names(ts_season))
             check_names(ts_season,c("DATE","M_YEAR","M_SEASON"))
+            
+            names(m_visit) <- toupper(names(m_visit))
+            check_names(m_visit,c("DATE","SITE_ID"))
 
             m_visit <- df_visit_season(m_visit,ts_season,DateFormat=DateFormat)
 
@@ -208,8 +249,11 @@ ts_monit_site = function(m_visit,ts_season,DateFormat="%Y-%m-%d") {
 ###                     for each day since a starting and ending years of the defined
 ###                     time series
 
+## alternative name -> align_visit_season  
+
 ts_monit_count_site = function(m_season_site,m_count,sp=1,DateFormat="%Y-%m-%d") {
 
+        check_data.table()
         names(m_season_site) <- toupper(names(m_season_site))
         check_names(m_season_site,c("DATE","SITE_ID","COUNT"))
 
@@ -237,24 +281,15 @@ ts_monit_count_site = function(m_season_site,m_count,sp=1,DateFormat="%Y-%m-%d")
 ###         the family of the model (error distribution) and the maximum number of trial to
 ###         perform if convergence has not been met
 
-fit_gam <- function(dataset_y,NbrSample=NbrSample,GamFamily=GamFamily,MaxTrial=MaxTrial){
+fit_gam <- function(dataset_y,NbrSample=NbrSample,GamFamily=GamFamily,MaxTrial=MaxTrial,SpeedGam=TRUE){
 
+        check_data.table()
         if (length(dataset_y[,unique(SITE_ID)]) > NbrSample) {
             sp_data_all <- data.table::copy(dataset_y[SITE_ID %in% sample(dataset_y[,unique(SITE_ID)],NbrSample,replace=FALSE),])
         }else{
             sp_data_all <- data.table::copy(dataset_y)
         }
 
-        ## fit GAM model ##
-        # print(paste("Fitting the RegionalGAM for species",as.character(sp_data_all$SPECIES[1]),"and year",sp_data_all$M_YEAR[1],"with",length(sp_data_all[,unique(SITE_ID)]),"sites :",Sys.time()))
-
-        # if(length(sp_data_all[,unique(SITE_ID)])>1){
-        #     gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE_ID) -1, data=sp_data_all, family=GamFamily), silent = TRUE)
-        # }else {
-        #     gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1, data=sp_data_all, family=GamFamily), silent = TRUE)
-        # }
-
-        ## fit GAM model with maximum trials if previous did not converge ##
         tr <- 1
         gam_obj_site <- c()
 
@@ -267,13 +302,21 @@ fit_gam <- function(dataset_y,NbrSample=NbrSample,GamFamily=GamFamily,MaxTrial=M
             }
 
             print(paste("Fitting the RegionalGAM for species",as.character(sp_data_all$SPECIES[1]),"and year",sp_data_all$M_YEAR[1],"with",length(sp_data_all[,unique(SITE_ID)]),"sites :",Sys.time(),"-> trial",tr))
+            
+            if(isTRUE(SpeedGam)){
+                if(length(sp_data_all[,unique(SITE_ID)])>1){
+                    gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE_ID) -1, data=sp_data_all, family=GamFamily), silent = TRUE)
+                }else {
+                    gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr")  -1, data=sp_data_all, family=GamFamily), silent = TRUE)
+                }
 
-            if(length(sp_data_all[,unique(SITE_ID)])>1){
-                gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE_ID) -1, data=sp_data_all, family=GamFamily), silent = TRUE)
-            }else {
-                gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1, data=sp_data_all, family=GamFamily), silent = TRUE)
+            } else {
+                if(length(sp_data_all[,unique(SITE_ID)])>1){
+                    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE_ID) -1, data=sp_data_all, family=GamFamily), silent = TRUE)
+                }else {
+                    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1, data=sp_data_all, family=GamFamily), silent = TRUE)
+                }
             }
-
             tr <- tr+1
         }
 
@@ -304,8 +347,9 @@ fit_gam <- function(dataset_y,NbrSample=NbrSample,GamFamily=GamFamily,MaxTrial=M
 ###             where the user can define the criteria required for site to be included in the flight
 ###             curve computation. So far, only one method is available, namely the regionalGAM.
 
-flight_curve <- function(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,FcMethod='regionalGAM',GamFamily='poisson',CompltSeason=TRUE) {
+flight_curve <- function(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,FcMethod='regionalGAM',GamFamily='poisson',CompltSeason=TRUE,SpeedGam=TRUE) {
 
+    check_data.table()
     names(ts_season_count) <- toupper(names(ts_season_count))
     check_names(ts_season_count,c("COMPLT_SEASON","M_YEAR","SITE_ID","SPECIES","DATE","DAY_SINCE","M_SEASON","COUNT","ANCHOR"))
 
@@ -333,7 +377,7 @@ flight_curve <- function(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,Min
                 print(paste("You have not enough sites with observations for estimating the flight curve for species",as.character(dataset_y$SPECIES[1]),"in", dataset_y$M_YEAR[1]))
             }else{
                 if(FcMethod=='regionalGAM'){
-                    f_curve <- fit_gam(dataset_y,NbrSample,GamFamily,MaxTrial)
+                    f_curve <- fit_gam(dataset_y,NbrSample,GamFamily,MaxTrial,SpeedGam=SpeedGam)
                 }else{
                     print("ONLY the regionalGAM method is available so far!")
                 }
@@ -350,15 +394,18 @@ flight_curve <- function(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,Min
 }
 
 
-
 ### impute_count function to compute the Abundance Index across sites and years from 
 ###                 your count dataset and the regional flight curve
 
-
-impute_count <- function(ts_season_count,ts_flight_curve) {
+impute_count <- function(ts_season_count,ts_flight_curve,SpeedGlm=TRUE) {
    
-    if(exists("sp_ts_season_count")) {rm("sp_ts_season_count")}
+    check_data.table()
+    check_speedglm(SpeedGlm) 
     
+    if(exists("sp_ts_season_count")) {
+        rm("sp_ts_season_count")
+    }
+        
     sp_ts_season_count <- data.table::copy(ts_season_count)
     sp_ts_season_count[,SPECIES:=ts_flight_curve$SPECIES[1]]
 
@@ -398,22 +445,44 @@ impute_count <- function(ts_season_count,ts_flight_curve) {
         non_zero <- sp_count_flight_y[,sum(COUNT,na.rm=TRUE),by=(SITE_ID)][V1>0,SITE_ID]
         zero <- sp_count_flight_y[,sum(COUNT,na.rm=TRUE),by=(SITE_ID)][V1==0,SITE_ID]
 
-        if(length(non_zero)>1){
-            if(sp_count_flight_y[unique(SITE_ID),.N]>1){
-                glm_obj_site <- try(glm(COUNT ~ factor(SITE_ID) + offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
-                    family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
-            } else {
-                glm_obj_site <- try(glm(COUNT ~ offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
-                    family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
-            }
-        }
+        if(length(non_zero)>=1){
 
-        if (class(glm_obj_site)[1] == "try-error") {
-            sp_count_flight_y[SITE_ID %in% non_zero,c("FITTED","COUNT_IMPUTED"):=.(NA,NA)]
-            print(paste("Computation of abundance indices for year",sp_count_flight_y[1,M_YEAR,],"failed with the RegionalGAM, verify the data you provided for that year"))
-            next()
-        }else{
-            sp_count_flight_y[SITE_ID %in% non_zero,FITTED:= predict.glm(glm_obj_site,newdata=sp_count_flight_y[SITE_ID %in% non_zero,],type = "response")]
+            if(isTRUE(SpeedGlm)){
+
+                if(sp_count_flight_y[unique(SITE_ID),.N]>1){
+                    glm_obj_site <- try(speedglm::speedglm(COUNT ~ factor(SITE_ID) + offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
+                        family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
+                } else {
+                    glm_obj_site <- try(speedglm::speedglm(COUNT ~ offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
+                        family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
+                }
+            
+                if (class(glm_obj_site)[1] == "try-error") {
+                    sp_count_flight_y[SITE_ID %in% non_zero,c("FITTED","COUNT_IMPUTED"):=.(NA,NA)]
+                    print(paste("Computation of abundance indices for year",sp_count_flight_y[1,M_YEAR,],"failed with the RegionalGAM, verify the data you provided for that year"))
+                    next()
+                }else{
+                    sp_count_flight_y[SITE_ID %in% non_zero,FITTED:= predict(glm_obj_site,newdata=sp_count_flight_y[SITE_ID %in% non_zero,],type = "response")]
+                } 
+
+            }else{
+
+                if(sp_count_flight_y[unique(SITE_ID),.N]>1){
+                    glm_obj_site <- try(glm(COUNT ~ factor(SITE_ID) + offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
+                        family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
+                } else {
+                    glm_obj_site <- try(glm(COUNT ~ offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
+                        family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
+                }
+            
+                if (class(glm_obj_site)[1] == "try-error") {
+                    sp_count_flight_y[SITE_ID %in% non_zero,c("FITTED","COUNT_IMPUTED"):=.(NA,NA)]
+                    print(paste("Computation of abundance indices for year",sp_count_flight_y[1,M_YEAR,],"failed with the RegionalGAM, verify the data you provided for that year"))
+                    next()
+                }else{
+                    sp_count_flight_y[SITE_ID %in% non_zero,FITTED:= predict.glm(glm_obj_site,newdata=sp_count_flight_y[SITE_ID %in% non_zero,],type = "response")]
+                }             
+            }
         }
 
         sp_count_flight_y[SITE_ID %in% zero,FITTED:=0]
@@ -455,46 +524,33 @@ butterfly_day <- function(sp_ts_season_count){
 ### Calabrese, J.M. (2012) How emergence and death assumptions affect count-based estimates of butterfly abundance and lifespan. Population Ecology, 54, 431–442.
 
 
-sim_emerg_curve <- function (t_series, PeakPos=50, sdPeak=1, sig=0.15, bet=3) {
-               
-            # EMERGENCE 1
-                
-            # peak + sample 1 from normal distribution (0,sd)
+sim_emerg_curve <- function (t_series, PeakPos=50, sdPeak=1, sigE=0.15, betE=3) {
+            
             u1 <- round(PeakPos * length(t_series)/100) + rnorm(1, 0, sdPeak)
-
-            # Logistic with 
-            fE1 <- (sig * (exp((t_series - u1)/bet)))/(bet * (1 + exp((t_series - u1)/bet)))^(sig + 1)
-                
-            # Standardize to AUC 1
+            fE1 <- (sigE * (exp((t_series - u1)/betE)))/(betE * (1 + exp((t_series - u1)/betE)))^(sigE + 1)
             sdfe <- fE1/sum(fE1)  
 
-            return(sdfe)
-            
-            }
+        return(sdfe)       
+    }
 
 ### sim_emerg_count simulates emergence of n adults [TotalEmerg] according an emergence curve [sdfe] using a Poisson process
 
-sim_emerg_count <- function(sdfe, TotalEmerg=100) {
+sim_emerg_nbr <- function(sdfe, TotalEmerg=100) {
 
             n_emerg <- unlist(lapply(TotalEmerg*sdfe,function(x) {rpois(1,x)}))
 
-            return(n_emerg)
-
-            }
+        return(n_emerg)
+    }
 
 ### sim_adult_count simulates the number of adults in a population, according to individual maximum life span [max_life] and daily
 ### mortality risk based on a beta distribution with ShapeA and ShapeB parameters
 
-sim_adult_count <- function(n_emerg, MaxLife=15, ShapeA=0.5, ShapeB=0.2){
+sim_adult_nbr <- function(n_emerg, MaxLife=15, ShapeA=0.5, ShapeB=0.2){
 
            c_mat <- matrix(0,nrow=length(n_emerg),ncol=length(n_emerg)+MaxLife+1)
-
-           ## daily hazard and decay (beta distribution)
-
            m_hazard <- c(0,diff(pbeta(seq(0,1,(1/MaxLife)),ShapeA,ShapeB)),1)
         
            for (i in seq_along(n_emerg)){
-
                 s <- n_emerg[i]
                 y=2
                 l=s
@@ -503,135 +559,109 @@ sim_adult_count <- function(n_emerg, MaxLife=15, ShapeA=0.5, ShapeB=0.2){
                     s <- s-rbinom(1,s,m_hazard[y])
                     y <- y+1
                     l <- c(l,s)
-                    }
-
-                c_mat[i,i:(i+length(l)-1)] <- l
-
                 }
-
-            return(colSums(c_mat))
-
+            
+                c_mat[i,i:(i+length(l)-1)] <- l
             }
 
+        return(colSums(c_mat))
+    }
 
-### sim_butterfly_count() simulates count data along monitoring seasons for a univoltine or multivoltine species, from month 4 to 9 (April to September)
 
-sim_butterfly_count <- function(d_season, FullSeason=TRUE, GenNumb=1, PeakPos=c(25,75), sdPeak=c(1,2), sig=0.15,
-                                bet=3, TotalEmerg=100, MaxLife=10) {
+### sim_butterfly_count() simulates the number of adult butterfly present during the monitoring seasons for a univoltine or multivoltine species, from month 4 to 9 (April to September)
+
+sim_butterfly_nbr <- function(d_season, CompltSeason=TRUE, GenNumb=1, PeakPos=c(25,75), sdPeak=c(1,2), sigE=0.15,
+                                betE=3, TotalEmerg=100, MaxLife=10, ShapeA=0.5, ShapeB=0.2) {
 
         if(length(PeakPos) < GenNumb) {stop("For multivoltine species, you need to provide a vector of distinct peak positions [PeakPos] to cover each emergence \n")}
         
         sdPeak <- rep(sdPeak,GenNumb)
-        sig <- rep(sig,GenNumb)
-        bet <- rep(bet,GenNumb)
+        sigE <- rep(sigE,GenNumb)
+        betE <- rep(betE,GenNumb)
         TotalEmerg <- rep(TotalEmerg,GenNumb)
         MaxLife <- rep(MaxLife,GenNumb)
 
         d_season <- data.table::copy(d_season)
 
-        if(isTRUE(FullSeason)){
-            sim_season=unique(d_season$FULL_SEASON)
-            }else{
-            sim_season=unique(d_season$SEASON)
+        if(isTRUE(CompltSeason)){
+            sim_season=d_season[COMPLT_SEASON==1,unique(M_SEASON)]
+        }else{
+            sim_season=d_season[,unique(M_SEASON)]
         }
 
         GenSim <- 1
-
-        for (i in sim_season){
-
-            if(i==0){next}
-
-                t_s <- seq_along(1:d_season[SEASON==i,.N])
-                emerg_curve <- sim_emerg_curve(t_s,PeakPos=PeakPos[GenSim],sdPeak=sdPeak[GenSim],sig=sig[GenSim],bet=bet[GenSim])
-                emerg_count <- sim_emerg_count(emerg_curve,TotalEmerg=TotalEmerg[GenSim])
-                adult_count <- sim_adult_count(emerg_count,MaxLife=MaxLife[GenSim])
-                d_season[SEASON==i,COUNT:=adult_count[1:d_season[SEASON==i,.N]]]
-        }
-
-        cumul_count <- d_season[,COUNT]
-        GenSim <- GenSim+1
             
-        while(GenNumb>=GenSim) {
-
+        while(GenSim<=GenNumb) {
             for (i in sim_season){
-
                 if(i==0){next}
-
-                    t_s <- seq_along(1:d_season[SEASON==i,.N])
-                    emerg_curve <- sim_emerg_curve(t_s,PeakPos=PeakPos[GenSim],sdPeak=sdPeak[GenSim],sig=sig[GenSim],bet=bet[GenSim])
-                    emerg_count <- sim_emerg_count(emerg_curve,TotalEmerg=TotalEmerg[GenSim])
-                    adult_count <- sim_adult_count(emerg_count,MaxLife=MaxLife[GenSim])
-                    d_season[SEASON==i,COUNT:=adult_count[1:d_season[SEASON==i,.N]]]
+                    t_s <- seq_along(1:d_season[M_SEASON==i,.N])
+                    emerg_curve <- sim_emerg_curve(t_s,PeakPos=PeakPos[GenSim],sdPeak=sdPeak[GenSim],sigE=sigE[GenSim],betE=betE[GenSim])
+                    emerg_nbr <- sim_emerg_nbr(emerg_curve,TotalEmerg=TotalEmerg[GenSim])
+                    adult_nbr <- sim_adult_nbr(emerg_nbr,MaxLife=MaxLife[GenSim],ShapeA, ShapeB)
+                    d_season[M_SEASON==i,ADLT_NBR:=as.integer(adult_nbr[1:d_season[M_SEASON==i,.N]])]
             }
-        
-        cumul_count <- cumul_count + d_season[,COUNT]
-        GenSim <- GenSim+1
-
+            if(GenSim==1){
+                cumul_count <- d_season[,ADLT_NBR]
+            }else{
+            cumul_count <- cumul_count + d_season[,ADLT_NBR]
+            }
+            GenSim <- GenSim+1
         }
 
-    d_season[,COUNT:=cumul_count]
-    d_season[,SITE_ID:=1]
-    d_season[,SPECIES:='sim']
+        d_season[,ADLT_NBR:=cumul_count]
+        d_season[,SITE_ID:=1]
+        d_season[,SPECIES:='sim']
 
     return(d_season)
-
 }
 
 # sim_monitoring_visit() simulates monitoring visits by volunteers, based on monitoring frequency set by the protocol c('weekly','fortnightly','monthly') or c('none') for all days within season
 
 sim_monitoring_visit <- function(d_season, MonitoringFreq=c('none')){
 
-    if(MonitoringFreq=='weekly'){
+        d_season[,WEEK:=data.table::isoweek(DATE)]
 
-        is_even <- sample(c(1,2),1) == 2
-        monitoring_day <- d_season[SEASON!=0L & (DAY_SINCE %% 2 == 0L)==is_even,sample(DAY_SINCE,1),by=.(SEASON_YEAR,WEEK)][,V1]
-    
-    }
+        if(MonitoringFreq=='weekly'){
+            is_even <- sample(c(1,2),1) == 2
+            monitoring_day <- d_season[M_SEASON!=0L & (DAY_SINCE %% 2 == 0L)==is_even,sample(DAY_SINCE,1),by=.(M_YEAR,WEEK)][,V1]    
+        }
 
-    if(MonitoringFreq=='fortnightly'){
-        
-        is_even <- sample(c(1,2),1) == 2
-        monitoring_day <- d_season[SEASON!=0L & (WEEK %% 2 == 0L)==is_even,sample(DAY_SINCE,1),by=.(SEASON_YEAR,WEEK)][,V1]
-    
-    }
+        if(MonitoringFreq=='fortnightly'){
+            is_even <- sample(c(1,2),1) == 2
+            monitoring_day <- d_season[M_SEASON!=0L & (WEEK %% 2 == 0L)==is_even,sample(DAY_SINCE,1),by=.(M_YEAR,WEEK)][,V1]
+        }
 
-    if(MonitoringFreq=='monthly'){
-        is_even <- sample(c(1,2),1) == 2
-        monitoring_day <- d_season[SEASON!=0L & (WEEK %% 2 == 0L)==is_even,sample(DAY_SINCE,1),by=.(SEASON_YEAR,MONTH)][,V1]
-    
-    }
+        if(MonitoringFreq=='monthly'){
+            is_even <- sample(c(1,2),1) == 2
+            monitoring_day <- d_season[M_SEASON!=0L & (WEEK %% 2 == 0L)==is_even,sample(DAY_SINCE,1),by=.(M_YEAR,MONTH)][,V1]
+        }
 
-    if(MonitoringFreq=='none'){
-
-        is_even <- sample(c(1,2),1) == 2
-        monitoring_day <- d_season[SEASON!=0L,DAY_SINCE]
-    
-    }
+        if(MonitoringFreq=='none'){
+            is_even <- sample(c(1,2),1) == 2
+            monitoring_day <- d_season[M_SEASON!=0L,DAY_SINCE]
+        }
 
     return(monitoring_day)
-
 }
 
 ### sim_sites_count function to simulate butterfly count across sites, assuming a common flight curve,
 ###                     but with potential shift in the position of the Peak
 
-sim_sites_count <- function(d_season,NbrSite=10,FullSeason=TRUE,GenNumb=1,PeakPos=c(25,75),sdPeak=c(1,2),sig=0.15,bet=3,TotalEmerg=100,MaxLife=10,MonitoringFreq=c('none'),PerctSampled=100){
+sim_butterfly_count <- function(d_season,NbrSite=10,FullSeason=TRUE,GenNumb=1,PeakPos=c(25,75),sdPeak=c(1,2),sigE=0.15,betE=3,TotalEmerg=100,MaxLife=10,MonitoringFreq=c('none'),PerctSampled=100,DetectProb=1){
 
-    site_count_list <- vector("list",NbrSite)
-    site_visit_list <- vector("list",NbrSite)
+        site_count_list <- vector("list",NbrSite)
+        site_visit_list <- vector("list",NbrSite)
 
-    for(s in 1:(NbrSite)){
-        d_season_count <- sim_butterfly_count(d_season,FullSeason=FullSeason,GenNumb=GenNumb,PeakPos=PeakPos,sdPeak=sdPeak,sig=sig,bet=bet,TotalEmerg=TotalEmerg,MaxLife=MaxLife)
-        m_day <- sim_monitoring_visit(d_season,MonitoringFreq=MonitoringFreq)
-        site_visit <- d_season_count[DAY_SINCE %in% m_day,.(DATE,YEAR,SITE_ID)][,SITE_ID:=SITE_ID+(s-1)]
-        site_count <- d_season_count[DAY_SINCE %in% sample(m_day,round((length(m_day)*PerctSampled)/100),replace=FALSE),][,SITE_ID:=SITE_ID+(s-1)]
-        site_count_list[[s]] <- site_count
-        site_visit_list[[s]] <- site_visit
-    }
-    
-    multisite_count <- data.table::rbindlist(site_count_list)
-    multisite_visit <- data.table::rbindlist(site_visit_list)
-    return(list(multisite_count,multisite_visit))
+        for(s in 1:(NbrSite)){
+            d_season_count <- sim_butterfly_count(d_season,FullSeason=FullSeason,GenNumb=GenNumb,PeakPos=PeakPos,sdPeak=sdPeak,sigE=sigE,betE=betE,TotalEmerg=TotalEmerg,MaxLife=MaxLife)
+            m_day <- sim_monitoring_visit(d_season,MonitoringFreq=MonitoringFreq)
+            site_count <- d_season_count[DAY_SINCE %in% sample(m_day,round((length(m_day)*PerctSampled)/100),replace=FALSE),COUNT:=rbinom(1,ADLT_NBR,DetectProb)][,SITE_ID:=SITE_ID+(s-1)]
+            site_count_list[[s]] <- site_count
+        }
+   
+        m_count <- data.table::rbindlist(site_count_list)
+
+    return(m_count)
 }
 
 
