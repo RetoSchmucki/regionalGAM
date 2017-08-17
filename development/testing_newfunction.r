@@ -79,7 +79,7 @@ m_count <- data.table::data.table(m_count)
 ## define the full time-series of your analysis, where InitYear is the first year and
 ## LasYear the last year of monitoring in the data set.
 
-ts_date <- ts_dwmy_table(InitYear=2000,LastYear=2015,WeekDay1='monday')
+ts_date <- ts_dwmy_table(InitYear=2010,LastYear=2015,WeekDay1='monday')
 
 ## Define your monitoring season, with StartMonth and EndMonth, StartDay and EndDay, if EndDay is not defined, the last day of the month
 ## will be used. If CompltSeason is set to TRUE, only these year with full monitoring season will be used. Anchor are extra zeros set at the
@@ -105,30 +105,34 @@ ts_season_count <- ts_monit_count_site(ts_season_visit,m_count,sp=2)
 ## increasing this will not help if it did not fit in the 3 first trials.
 ## GamFamily is the distribution of the error term used in the GAM.
 ## CompltSeason is a logical limiting modelling to complete season only.
-
-ts_flight_curve <- flight_curve(ts_season_count,NbrSample=250,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,FcMethod='regionalGAM',GamFamily='poisson',CompltSeason=TRUE,SpeedGam=TRUE)
-
+system.time({
+ts_flight_curve <- flight_curve(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,
+                                    FcMethod='regionalGAM',GamFamily='quasipoisson',CompltSeason=TRUE,
+                                    SelectYear=NULL,SpeedGam=TRUE,OptiGam=TRUE)
+})
   ## plot the flight curves
-  plot(ts_flight_curve[M_YEAR==2000,trimDAYNO],ts_flight_curve[M_YEAR==2000,NM],type='l',xlab='Monitoring Year Day',ylab='Relative Abundance')
+  dev.new()
+  plot(ts_flight_curve[M_YEAR==2010,trimDAYNO],ts_flight_curve[M_YEAR==2010,NM],type='l',xlab='Monitoring Year Day',ylab='Relative Abundance')
   c <- 2
-  for(y in 2001:2015){
+  for(y in 2011:2015){
       points(ts_flight_curve[M_YEAR==y,trimDAYNO],ts_flight_curve[M_YEAR==y,NM],type='l',col=c)
       c <- c + 1
   }
-
   
 ## Use the output of the GAM model (flight curve) to impute values for missing counts, using a GLM 
-site_year_sp_count <- impute_count(ts_season_count,ts_flight_curve,SpeedGlm=FALSE)
-site_year_sp_count_speed <- impute_count(ts_season_count,ts_flight_curve,SpeedGlm=TRUE)
+system.time({
+site_year_sp_count <- impute_count(ts_season_count,ts_flight_curve,FamilyGlm=quasipoisson(),CompltSeason=TRUE,
+                                    SelectYear=2010,SpeedGlm=FALSE)
+})
 
   ## plot the fitted values and the observed observation
-  # plot(site_year_sp_count[SITE_ID==1 & M_YEAR==2013,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2013,FITTED],col='blue',type='l',main='Season 2013',xlab='Monitoring Month',ylab='Fitted Count')
-  # points(site_year_sp_count[SITE_ID==1 & M_YEAR==2013,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2013,COUNT],col='red')
+dev.new()
+par(mfrow=c(1,2))
+   plot(site_year_sp_count[SITE_ID==1 & M_YEAR==2010,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2010,FITTED],col='blue',type='l',main='Season 2013',xlab='Monitoring Month',ylab='Fitted Count')
+   points(site_year_sp_count[SITE_ID==1 & M_YEAR==2010,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2010,COUNT],col='red')
 
-  dev.new()
-  plot(site_year_sp_count_speed[SITE_ID==1 & M_YEAR==2013,DATE],site_year_sp_count_speed[SITE_ID==1 & M_YEAR==2013,FITTED],col='blue',type='l',main='Season 2013',xlab='Monitoring Month',ylab='Fitted Count')
-  points(site_year_sp_count_speed[SITE_ID==1 & M_YEAR==2013,DATE],site_year_sp_count_speed[SITE_ID==1 & M_YEAR==2013,COUNT],col='red')
-
+   plot(site_year_sp_count[SITE_ID==1 & M_YEAR==2013,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2013,FITTED],col='blue',type='l',main='Season 2013',xlab='Monitoring Month',ylab='Fitted Count')
+   points(site_year_sp_count[SITE_ID==1 & M_YEAR==2013,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2013,COUNT],col='red')
 
   
 ## Compute the total number of butterfly days - abundance index per site and year.

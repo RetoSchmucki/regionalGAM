@@ -281,7 +281,7 @@ ts_monit_count_site = function(m_season_site,m_count,sp=1,DateFormat="%Y-%m-%d")
 ###         the family of the model (error distribution) and the maximum number of trial to
 ###         perform if convergence has not been met
 
-fit_gam <- function(dataset_y,NbrSample=NbrSample,GamFamily=GamFamily,MaxTrial=MaxTrial,SpeedGam=TRUE){
+fit_gam <- function(dataset_y,NbrSample=NbrSample,GamFamily=GamFamily,MaxTrial=MaxTrial,SpeedGam=TRUE,OptiGam=TRUE,...){
 
         check_data.table()
         if (length(dataset_y[,unique(SITE_ID)]) > NbrSample) {
@@ -301,20 +301,31 @@ fit_gam <- function(dataset_y,NbrSample=NbrSample,GamFamily=GamFamily,MaxTrial=M
                 sp_data_all <- data.table::copy(dataset_y)
             }
 
-            print(paste("Fitting the RegionalGAM for species",as.character(sp_data_all$SPECIES[1]),"and year",sp_data_all$M_YEAR[1],"with",length(sp_data_all[,unique(SITE_ID)]),"sites :",Sys.time(),"-> trial",tr))
+            if(isTRUE(OptiGam)){
+                if(length(sp_data_all[,unique(SITE_ID)])< 100){
+                    SpeedGam <- FALSE
+                }
+            }
+
+            gamMethod <-'gam()'
+            if(isTRUE(SpeedGam)){
+                gamMethod <-'SpeedGAM [bam()]'
+            }
+            
+            print(paste("Fitting the RegionalGAM for species",as.character(sp_data_all$SPECIES[1]),"and year",sp_data_all$M_YEAR[1],"with",length(sp_data_all[,unique(SITE_ID)]),"sites, using",gamMethod,":",Sys.time(),"-> trial",tr))
             
             if(isTRUE(SpeedGam)){
                 if(length(sp_data_all[,unique(SITE_ID)])>1){
-                    gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE_ID) -1, data=sp_data_all, family=GamFamily), silent = TRUE)
+                    gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE_ID) -1, data=sp_data_all, family=GamFamily,...), silent = TRUE)
                 }else {
-                    gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr")  -1, data=sp_data_all, family=GamFamily), silent = TRUE)
+                    gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr")  -1, data=sp_data_all, family=GamFamily,...), silent = TRUE)
                 }
 
             } else {
                 if(length(sp_data_all[,unique(SITE_ID)])>1){
-                    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE_ID) -1, data=sp_data_all, family=GamFamily), silent = TRUE)
+                    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE_ID) -1, data=sp_data_all, family=GamFamily,...), silent = TRUE)
                 }else {
-                    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1, data=sp_data_all, family=GamFamily), silent = TRUE)
+                    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1, data=sp_data_all, family=GamFamily,...), silent = TRUE)
                 }
             }
             tr <- tr+1
@@ -347,19 +358,26 @@ fit_gam <- function(dataset_y,NbrSample=NbrSample,GamFamily=GamFamily,MaxTrial=M
 ###             where the user can define the criteria required for site to be included in the flight
 ###             curve computation. So far, only one method is available, namely the regionalGAM.
 
-flight_curve <- function(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,FcMethod='regionalGAM',GamFamily='poisson',CompltSeason=TRUE,SpeedGam=TRUE) {
+flight_curve <- function(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,FcMethod='regionalGAM',
+                            GamFamily='poisson',CompltSeason=TRUE,SelectYear=NULL,SpeedGam=TRUE,OptiGam=TRUE,...) {
 
-    check_data.table()
-    names(ts_season_count) <- toupper(names(ts_season_count))
-    check_names(ts_season_count,c("COMPLT_SEASON","M_YEAR","SITE_ID","SPECIES","DATE","DAY_SINCE","M_SEASON","COUNT","ANCHOR"))
+        check_data.table()
+        names(ts_season_count) <- toupper(names(ts_season_count))
+        check_names(ts_season_count,c("COMPLT_SEASON","M_YEAR","SITE_ID","SPECIES","DATE","DAY_SINCE","M_SEASON","COUNT","ANCHOR"))
 
-    if(isTRUE(CompltSeason)){
-        ts_season_count <- ts_season_count[COMPLT_SEASON==1]
-    }
+        if(isTRUE(CompltSeason)){
+            ts_season_count <- ts_season_count[COMPLT_SEASON==1]
+        }
 
         if(exists("f_pheno")){rm(f_pheno)}
 
-        for (y in ts_season_count[,unique(as.integer(M_YEAR))]) {
+        if(is.null(SelectYear)){
+            year_series <- ts_season_count[,unique(as.integer(M_YEAR))]
+        } else {
+            year_series <- ts_season_count[M_YEAR %in% SelectYear,unique(as.integer(M_YEAR))]
+        }
+
+        for (y in year_series) {
 
             dataset_y <- ts_season_count[as.integer(M_YEAR)==y, .(SPECIES,SITE_ID,DATE,DAY_SINCE,M_YEAR,M_SEASON,COUNT,ANCHOR)]
             dataset_y[,trimDAYNO:=DAY_SINCE-min(DAY_SINCE)+1]
@@ -377,7 +395,7 @@ flight_curve <- function(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,Min
                 print(paste("You have not enough sites with observations for estimating the flight curve for species",as.character(dataset_y$SPECIES[1]),"in", dataset_y$M_YEAR[1]))
             }else{
                 if(FcMethod=='regionalGAM'){
-                    f_curve <- fit_gam(dataset_y,NbrSample,GamFamily,MaxTrial,SpeedGam=SpeedGam)
+                    f_curve <- fit_gam(dataset_y,NbrSample,GamFamily,MaxTrial,SpeedGam=SpeedGam,OptiGam=OptiGam,...)
                 }else{
                     print("ONLY the regionalGAM method is available so far!")
                 }
@@ -394,111 +412,162 @@ flight_curve <- function(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,Min
 }
 
 
-### impute_count function to compute the Abundance Index across sites and years from 
-###                 your count dataset and the regional flight curve
+### check_pheno function check for the flight curve of a specific year and if missing impute the nearest available 
+###             within a span of 5 years 
 
-impute_count <- function(ts_season_count,ts_flight_curve,SpeedGlm=TRUE) {
-   
-    check_data.table()
-    check_speedglm(SpeedGlm) 
-    
-    if(exists("sp_ts_season_count")) {
-        rm("sp_ts_season_count")
-    }
-        
-    sp_ts_season_count <- data.table::copy(ts_season_count)
-    sp_ts_season_count[,SPECIES:=ts_flight_curve$SPECIES[1]]
+check_pheno <- function(sp_count_flight_y,sp_count_flight){
 
-    data.table::setkey(sp_ts_season_count,DATE)
-    data.table::setkey(ts_flight_curve,DATE)
-
-    sp_count_flight <- merge(sp_ts_season_count,ts_flight_curve[,.(DATE,trimDAYNO,NM)],all.x=TRUE)
-    data.table::setkey(sp_count_flight,M_YEAR,DATE,SITE_ID)
-
-    for(y in sp_count_flight[,unique(as.integer(M_YEAR))]){
-        
-        sp_count_flight_y <-  data.table::copy(sp_count_flight[as.integer(M_YEAR)==y,])
-        print(paste("Computing abundance indices for species",sp_count_flight_y[1,SPECIES],"monitored in year", sp_count_flight_y[1,M_YEAR],"across",sp_count_flight_y[unique(SITE_ID),.N],"sites:",Sys.time()))
-        
         if(sp_count_flight_y[is.na(NM),.N]>0){
             tr<-1
-            search_op <- rep(1:5,rep(2,5))*c(-1,1)
-            alt_flight <- sp_count_flight[as.integer(M_YEAR)==y,.(M_YEAR,trimDAYNO,NM)]
-           
-            while(alt_flight[is.na(NM),.N]>0 & tr<20){
-                alt_flight <- unique(sp_count_flight[as.integer(M_YEAR)==y+search_op[tr],.(M_YEAR,trimDAYNO,NM)])
+            z <- rep(1:5,rep(2,5))*c(-1,1)
+            search_op <-sp_count_flight[,unique(as.integer(M_YEAR))]
+            valid_y <- c(y+z)[c(y+z)>min(search_op) & c(y+z)<max(search_op)]
+            alt_flight <- unique(sp_count_flight[as.integer(M_YEAR)==y,.(M_YEAR,trimDAYNO,NM)])
+
+            while(alt_flight[is.na(NM),.N]>0 & tr<=length(valid_y)){
+                alt_flight <- unique(sp_count_flight[as.integer(M_YEAR)==valid_y[tr],.(M_YEAR,trimDAYNO,NM)])
                 tr<-tr+1
             }
-           
+            
             if(alt_flight[is.na(NM),.N]>0){
                 next(paste("No reliable flight curve available within a 5 year horizon of",sp_count_flight_y[1,M_YEAR,]))
             }else{
                 warning(paste("We used the flight curve of",alt_flight[1,M_YEAR],"to compute abundance indices for year",sp_count_flight_y[1,M_YEAR,]))
+                sp_count_flight_y[,trimDAYNO:=DAY_SINCE-min(DAY_SINCE)+1]
+                data.table::setnames(alt_flight,'NM','NMnew')
+                alt_flight[,M_YEAR:=NULL]
                 data.table::setkey(sp_count_flight_y,trimDAYNO)
                 data.table::setkey(alt_flight,trimDAYNO)
-                sp_count_flight_y[alt_flight,NM:=alt_flight[,NM]]
+                sp_count_flight_y <- merge(sp_count_flight_y,alt_flight,by='trimDAYNO',all.x=TRUE)
+                sp_count_flight_y[,NM:=NMnew][,NMnew:=NULL]
             }
         }
-
-        sp_count_flight_y[M_SEASON==0L,COUNT:=NA]
-        sp_count_flight_y[M_SEASON!=0L & NM==0,NM:=0.000001]
-        non_zero <- sp_count_flight_y[,sum(COUNT,na.rm=TRUE),by=(SITE_ID)][V1>0,SITE_ID]
-        zero <- sp_count_flight_y[,sum(COUNT,na.rm=TRUE),by=(SITE_ID)][V1==0,SITE_ID]
-
-        if(length(non_zero)>=1){
-
-            if(isTRUE(SpeedGlm)){
-
-                if(sp_count_flight_y[unique(SITE_ID),.N]>1){
-                    glm_obj_site <- try(speedglm::speedglm(COUNT ~ factor(SITE_ID) + offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
-                        family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
-                } else {
-                    glm_obj_site <- try(speedglm::speedglm(COUNT ~ offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
-                        family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
-                }
-            
-                if (class(glm_obj_site)[1] == "try-error") {
-                    sp_count_flight_y[SITE_ID %in% non_zero,c("FITTED","COUNT_IMPUTED"):=.(NA,NA)]
-                    print(paste("Computation of abundance indices for year",sp_count_flight_y[1,M_YEAR,],"failed with the RegionalGAM, verify the data you provided for that year"))
-                    next()
-                }else{
-                    sp_count_flight_y[SITE_ID %in% non_zero,FITTED:= predict(glm_obj_site,newdata=sp_count_flight_y[SITE_ID %in% non_zero,],type = "response")]
-                } 
-
-            }else{
-
-                if(sp_count_flight_y[unique(SITE_ID),.N]>1){
-                    glm_obj_site <- try(glm(COUNT ~ factor(SITE_ID) + offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
-                        family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
-                } else {
-                    glm_obj_site <- try(glm(COUNT ~ offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
-                        family = quasipoisson(link = "log"), control = list(maxit = 100)),silent=TRUE)
-                }
-            
-                if (class(glm_obj_site)[1] == "try-error") {
-                    sp_count_flight_y[SITE_ID %in% non_zero,c("FITTED","COUNT_IMPUTED"):=.(NA,NA)]
-                    print(paste("Computation of abundance indices for year",sp_count_flight_y[1,M_YEAR,],"failed with the RegionalGAM, verify the data you provided for that year"))
-                    next()
-                }else{
-                    sp_count_flight_y[SITE_ID %in% non_zero,FITTED:= predict.glm(glm_obj_site,newdata=sp_count_flight_y[SITE_ID %in% non_zero,],type = "response")]
-                }             
-            }
-        }
-
-        sp_count_flight_y[SITE_ID %in% zero,FITTED:=0]
-        sp_count_flight_y[is.na(COUNT),COUNT_IMPUTED:=FITTED][!is.na(COUNT),COUNT_IMPUTED:=as.numeric(COUNT)][M_SEASON==0L,COUNT_IMPUTED:=0] 
-
-        data.table::setkey(sp_ts_season_count,SITE_ID,DAY_SINCE)
-        data.table::setkey(sp_count_flight_y,SITE_ID,DAY_SINCE)
-
-        if("FITTED" %in% names(sp_ts_season_count)){
-            sp_ts_season_count[sp_count_flight_y,':='(trimDAYNO=i.trimDAYNO,NM=i.NM,FITTED=i.FITTED,COUNT_IMPUTED=i.COUNT_IMPUTED)]
-        }else{
-            sp_ts_season_count <- merge(sp_ts_season_count, sp_count_flight_y[,.(DAY_SINCE,SITE_ID,trimDAYNO,NM,FITTED,COUNT_IMPUTED)], all.x=TRUE) 
-        }
+        return(sp_count_flight_y)
     }
 
-    return(sp_ts_season_count)
+
+### fit_glm function to fit and predict daily butterfly counts using the flight curve and the glm method provided in stats package 
+### 
+
+fit_glm <- function(sp_count_flight_y,non_zero,FamilyGlm){
+
+            if(sp_count_flight_y[unique(SITE_ID),.N]>1){
+                glm_obj_site <- try(glm(COUNT ~ factor(SITE_ID) + offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
+                family=FamilyGlm, control=list(maxit=100)),silent=TRUE)
+            } else {
+                glm_obj_site <- try(glm(COUNT ~ offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
+                family=FamilyGlm, control=list(maxit=100)),silent=TRUE)
+            }
+             
+            if (class(glm_obj_site)[1] == "try-error") {
+                sp_count_flight_y[SITE_ID %in% non_zero,c("FITTED","COUNT_IMPUTED"):=.(NA,NA)]
+                print(paste("Computation of abundance indices for year",sp_count_flight_y[1,M_YEAR,],"failed with the RegionalGAM, verify the data you provided for that year"))
+                next()
+            }else{
+                sp_count_flight_y[SITE_ID %in% non_zero,FITTED:= predict.glm(glm_obj_site,newdata=sp_count_flight_y[SITE_ID %in% non_zero,],type = "response")]
+            }
+        return(sp_count_flight_y)
+    }
+
+
+### fit_speedglm function to fit and predict daily butterfly counts using the flight curve and the speedglm method provided in the speedglm package
+### 
+
+fit_speedglm <- function(sp_count_flight_y,non_zero,FamilyGlm){
+
+            if(sp_count_flight_y[unique(SITE_ID),.N]>1){
+                glm_obj_site <- try(speedglm::speedglm(COUNT ~ factor(SITE_ID) + offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
+                family=FamilyGlm, control=list(maxit=100)),silent=TRUE)
+            } else {
+                glm_obj_site <- try(speedglm::speedglm(COUNT ~ offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,],
+                family=FamilyGlm, control=list(maxit=100)),silent=TRUE)
+            }
+             
+            if (class(glm_obj_site)[1] == "try-error") {
+                sp_count_flight_y[SITE_ID %in% non_zero,c("FITTED","COUNT_IMPUTED"):=.(NA,NA)]
+                print(paste("Computation of abundance indices for year",sp_count_flight_y[1,M_YEAR,],"failed with the RegionalGAM, verify the data you provided for that year"))
+            }else{
+                sp_count_flight_y[SITE_ID %in% non_zero,FITTED:= predict(glm_obj_site,newdata=sp_count_flight_y[SITE_ID %in% non_zero,],type = "response")]
+            } 
+        return(sp_count_flight_y)
+    }
+
+
+### impute_count function to compute the Abundance Index across sites and years from 
+###                 your count dataset and the regional flight curve
+
+impute_count <- function(ts_season_count,ts_flight_curve,FamilyGlm=quasipoisson(),CompltSeason=TRUE,
+                                    SelectYear=NULL,SpeedGlm=FALSE) {
+
+        check_data.table()
+        check_speedglm(SpeedGlm) 
+        
+        if(isTRUE(CompltSeason)){
+            ts_season_count <- ts_season_count[COMPLT_SEASON==1]
+        }
+            
+        sp_ts_season_count <- data.table::copy(ts_season_count)
+        sp_ts_season_count[,SPECIES:=ts_flight_curve$SPECIES[1]]
+        data.table::setkey(sp_ts_season_count,DATE)
+        data.table::setkey(ts_flight_curve,DATE)
+        sp_count_flight <- merge(sp_ts_season_count,ts_flight_curve[,.(DATE,trimDAYNO,NM)],all.x=TRUE)
+        data.table::setkey(sp_count_flight,M_YEAR,DATE,SITE_ID)
+
+        glmMet <- "glm()"
+        if(isTRUE(SpeedGlm)){
+            glmMet <- "speedglm()"
+        } 
+
+        if(is.null(SelectYear)){
+            year_series <- ts_season_count[,unique(as.integer(M_YEAR))]
+        } else {
+            year_series <- ts_season_count[M_YEAR %in% SelectYear,unique(as.integer(M_YEAR))]
+        }
+
+        for(y in year_series){
+            
+            sp_count_flight_y <-  data.table::copy(sp_count_flight[as.integer(M_YEAR)==y,])
+            sp_count_flight_y <- check_pheno(sp_count_flight_y,sp_count_flight)
+
+            print(paste("Computing abundance indices for species",sp_count_flight_y[1,SPECIES],"monitored in year", sp_count_flight_y[1,M_YEAR],"across",sp_count_flight_y[unique(SITE_ID),.N],"sites, using",glmMet,":",Sys.time()))
+
+            sp_count_flight_y[M_SEASON==0L,COUNT:=NA]
+            sp_count_flight_y[M_SEASON!=0L & NM==0,NM:=0.000001]
+            non_zero <- sp_count_flight_y[,sum(COUNT,na.rm=TRUE),by=(SITE_ID)][V1>0,SITE_ID]
+            zero <- sp_count_flight_y[,sum(COUNT,na.rm=TRUE),by=(SITE_ID)][V1==0,SITE_ID]
+
+            if(length(non_zero)>=1){
+                if(isTRUE(SpeedGlm)){
+                    sp_count_flight_y <- fit_speedglm(sp_count_flight_y,non_zero,FamilyGlm)             
+                    if (class(glm_obj_site)[1] == "try-error") {
+                        next()
+                    }
+                }else{
+                    sp_count_flight_y <- fit_glm(sp_count_flight_y,non_zero,FamilyGlm)    
+                    if (class(glm_obj_site)[1] == "try-error") {
+                        next()
+                    }         
+                }
+            }
+
+            sp_count_flight_y[SITE_ID %in% zero,FITTED:=0]
+            sp_count_flight_y[is.na(COUNT),COUNT_IMPUTED:=FITTED][!is.na(COUNT),COUNT_IMPUTED:=as.numeric(COUNT)][M_SEASON==0L,COUNT_IMPUTED:=0] 
+
+            data.table::setkey(sp_ts_season_count,SITE_ID,DAY_SINCE)
+            data.table::setkey(sp_count_flight_y,SITE_ID,DAY_SINCE)
+
+            if("FITTED" %in% names(sp_ts_season_count)){
+                sp_ts_season_count[sp_count_flight_y,':='(trimDAYNO=i.trimDAYNO,NM=i.NM,FITTED=i.FITTED,COUNT_IMPUTED=i.COUNT_IMPUTED)]
+            }else{
+                sp_ts_season_count <- merge(sp_ts_season_count, sp_count_flight_y[,.(DAY_SINCE,SITE_ID,trimDAYNO,NM,FITTED,COUNT_IMPUTED)], all.x=TRUE) 
+            }
+        }
+
+    if(!is.null(SelectYear)){
+        return(sp_ts_season_count[M_YEAR %in% SelectYear,])
+    } else {
+        return(sp_ts_season_count)
+    }
 } 
 
 
