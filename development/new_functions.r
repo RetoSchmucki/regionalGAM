@@ -15,42 +15,69 @@
 
 ### check_datatable function to verify if the data.table package is installed
 
-check_data.table <- function(){
-        if("data.table" %in% installed.packages() == "FALSE") {
-            print("data.table package is not installed.")
-            x <- readline("Do you want to install it? Y/N")            
+#' check_data.table
+#' Internal function to verified data.table() installation
+#' @param pkgName A string with the package name
+#' @keywords data.table()
+#' @export
+#' @author Reto Schmucki - retoschm[at]ceh.ac.uk
+#' @examples
+#' check_data.table()
+
+check_data.table <- function(pkgName='data.table'){
+        if(pkgName %in% installed.packages() == "FALSE") {
+            print(paste(pkgName,"package is not installed.")
+            x <- readline(paste("Do you want to install",pkgName,"? Y/N"))            
             if (toupper(x) == 'Y') { 
-                    install.packages("data.table")
+                    install.packages(pkgName)
             }
             if (toupper(x) == 'N') {
-                print("This version does not work without data.table, sorry")
+                print(paste("This version require",pkgName))
             }
         }
     }
 
 ### check_speedglm function to verify if the speedglm package is installed
 
-check_speedglm <- function(SpeedGlm){
-        if(isTRUE(SpeedGlm)){
-            if("speedglm" %in% installed.packages() == "FALSE") {
-                print("speedglm package is not installed.")
-                x <- readline("Do you want to install it? Y/N")                
-                if (toupper(x) == 'Y') { 
-                        install.packages("speedglm")
-                }
-                if (toupper(x) == 'N') {
-                    SpeedGlm <- FALSE
-                    print("Without the speedglm package, we will use the base GLM function, sorry")
-                }
+#' check_speedglm
+#' Internal function to verified speedglm() installation
+#' @param pkgName A string with the package name
+#' @keywords speedglm, large data set
+#' @export
+#' @author Reto Schmucki - retoschm[at]ceh.ac.uk
+#' @examples
+#' check_speedglm()
+
+check_speedglm <- function(pkgName='Speedglm'){
+        if(pkgName %in% installed.packages() == "FALSE") {
+            print(paste(pkgName,"package is not installed.")
+            x <- readline(paste("Do you want to install",pkgName,"? Y/N"))            
+        
+            if (toupper(x) == 'Y') { 
+                    install.packages(pkgName)
+            }
+            if (toupper(x) == 'N') {
+                print(paste("This version require",pkgName,'glm() will be used instead'))
             }
         }
     }
 ### check_names function is a generic function to verify if the provided data.table contains the required column names
 
+#' check_names
+#' Internal function to verified if the required column names are found in a data.table
+#' @param x a data.table object with column names
+#' @param y vector with the reqired variable names
+#' @keywords variable name
+#' @export
+#' @author Reto Schmucki - retoschm[at]ceh.ac.uk
+#' @examples
+#' check_names()
+#'
+
 check_names <- function(x, y){
         dt_names <- y %in% names(x)
         if(sum(dt_names)!=length(y)) {
-            stop(paste('For this function, you need to have a variable named -', paste(y[!dt_names],collapse=' & '), '- in table',deparse(substitute(x)),'\n'))
+            stop(paste('You need to have a variable named -', paste(y[!dt_names],collapse=' & '), '- in table',deparse(substitute(x)),'\n'))
         }
     }
 
@@ -61,7 +88,18 @@ check_names <- function(x, y){
 ##
 ##  This function is used within the ts_dwmy_table() function
 
-ts_date_seq = function(InitYear=1970,LastYear=format(Sys.Date(),"%Y")) {
+#' build_date_seq
+#' Generate a time-series of dates from one inital to an end years
+#' @param InitYear start year of the time-series, 4 numbers format (e.g 1987)
+#' @param LastYear end year of the time-series, if not provided, current year is used instead 
+#' @keywords time series
+#' @export
+#' @author Reto Schmucki - retoschm[at]ceh.ac.uk
+#' @examples
+#' build_date_seq()
+#'
+
+build_date_seq <- function(InitYear=1970,LastYear=format(Sys.Date(),"%Y")) {
 
     init_date <- as.Date(paste((InitYear-1), "01-01", sep = "-"))
     last_date <- as.Date(paste((as.numeric(LastYear)+1), "12-31", sep = "-"))
@@ -79,6 +117,18 @@ ts_date_seq = function(InitYear=1970,LastYear=format(Sys.Date(),"%Y")) {
 ###         independent of the year
 
 ## alternative name -> build_ts
+
+#' ts_dwmy_table
+#' Generate a time-series of dates from one inital to an end years
+#' @param InitYear start year of the time-series, 4 numbers format (e.g 1987)
+#' @param LastYear end year of the time-series, if not provided, current year is used instead 
+#' @param WeekDay1
+#' @keywords time series
+#' @export
+#' @author Reto Schmucki - retoschm[at]ceh.ac.uk
+#' @examples
+#' ts_dwmy_table()
+#'
 
 ts_dwmy_table = function(InitYear=1970,LastYear=format(Sys.Date(),"%Y"),WeekDay1='monday') {
 
@@ -500,7 +550,9 @@ impute_count <- function(ts_season_count,ts_flight_curve,FamilyGlm=quasipoisson(
                                     SelectYear=NULL,SpeedGlm=FALSE) {
 
         check_data.table()
-        check_speedglm(SpeedGlm) 
+        if(isTRUE(SpeedGlm)){
+            check_speedglm(SpeedGlm)
+        }
         
         if(isTRUE(CompltSeason)){
             ts_season_count <- ts_season_count[COMPLT_SEASON==1]
