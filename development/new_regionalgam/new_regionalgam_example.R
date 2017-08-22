@@ -8,8 +8,13 @@
 source(new_regionalgam_function.R)
 
 ### load your data monitoring visit and butterfly count.
-m_visit <- data.table::fread("m_visit.csv",header=TRUE)
-m_count <- data.table::fread("m_count.csv",header=TRUE)
+## new_regionalgam\new_regionalgam_example.R
+m_visit <- data.table::fread("new_regionalgam/m_visit.csv",header=TRUE)
+m_count <- data.table::fread("new_regionalgam/m_count.csv",header=TRUE)
+
+# ### NORA's data
+# m_visit <- data.table::fread("new_regionalgam/d_visit.csv",header=TRUE)
+# m_count <- data.table::fread("new_regionalgam/d_count.csv",header=TRUE)
 
 ### IMPORTANT! all function are now build on the data.table framework, so if your data are not in this format (e.g. data.frame), you need to convert them first.
 ## this is only required if you do not used data.table to load your data. Here is how it should be done
@@ -21,22 +26,22 @@ m_count <- data.table::data.table(m_count)
 ## define the full time-series of your analysis, where InitYear is the first year and
 ## LasYear the last year of monitoring in the data set.
 
-ts_date <- ts_dwmy_table(InitYear=2000,LastYear=2000,WeekDay1='monday')
+ts_date <- ts_dwmy_table(InitYear=2010,LastYear=2017,WeekDay1='monday')
 
 ## Define your monitoring season, with StartMonth and EndMonth, StartDay and EndDay, if EndDay is not defined, the last day of the month
 ## will be used. If CompltSeason is set to TRUE, only these year with full monitoring season will be used. Anchor are extra zeros set at the
 ## begining and the end of the season to help closing the curve (length and lag are defining the weight of the Anchor) 
-ts_season <- ts_monit_season(ts_date,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NULL,CompltSeason=TRUE,Anchor=TRUE,AnchorLength=7,AnchorLag=7)
+ts_season <- ts_monit_season(ts_date,StartMonth=10,EndMonth=6,StartDay=1,EndDay=NULL,CompltSeason=TRUE,Anchor=TRUE,AnchorLength=7,AnchorLag=7)
 
 ## The following two step need to done in this order
 m_visit <- df_visit_season(m_visit,ts_season)
-ts_season_visit <- ts_monit_site(ts_season,m_visit)
+ts_season_visit <- ts_monit_site(m_visit,ts_season)
 
 # check the species available in your data set
 m_count[order(SPECIES),unique(SPECIES)]
 
 # you can choose between species 2 and 4 here.
-ts_season_count <- ts_monit_count_site(ts_season_visit,m_count,sp=4)
+ts_season_count <- ts_monit_count_site(ts_season_visit,m_count,sp='Vanessa cardui')
 
 ## compute the flight curve for the selected species in the previous step (e.g. sp=4)
 ## The NbrSample is the maximum number of site used to compute the regionalGAM
@@ -50,9 +55,9 @@ ts_season_count <- ts_monit_count_site(ts_season_visit,m_count,sp=4)
 ts_flight_curve <- flight_curve(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,FcMethod='regionalGAM',GamFamily='poisson',CompltSeason=TRUE)
 
 ## plot the flight curves
-plot(ts_flight_curve[M_YEAR==2000,trimDAYNO],ts_flight_curve[M_YEAR==2000,NM],type='l',xlab='Monitoring Year Day',ylab='Relative Abundance')
+plot(ts_flight_curve[M_YEAR==2015,trimDAYNO],ts_flight_curve[M_YEAR==2015,NM],type='l',xlab='Monitoring Year Day',ylab='Relative Abundance')
 c <- 2
-for(y in 2001:2005){
+for(y in 2015:2016){
   points(ts_flight_curve[M_YEAR==y,trimDAYNO],ts_flight_curve[M_YEAR==y,NM],type='l',col=c)
   c <- c + 1
 }

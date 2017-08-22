@@ -19,9 +19,9 @@
 #' Internal function to verified data.table() installation
 #' @param pkgName A string with the package name
 #' @keywords data.table()
-#' @export
+#' @return If data.table is not installed, the function ask to install the package.
 #' @author Reto Schmucki - retoschm[at]ceh.ac.uk
-#' @examples
+#' @seealso \code{\link[data.table]{data.table}}
 #' check_data.table()
 
 check_data.table <- function(pkgName='data.table'){
@@ -32,7 +32,7 @@ check_data.table <- function(pkgName='data.table'){
                     install.packages(pkgName)
             }
             if (toupper(x) == 'N') {
-                print(paste("This version require",pkgName))
+                print(paste("This version strictly requires",pkgName))
             }
         }
     }
@@ -42,13 +42,14 @@ check_data.table <- function(pkgName='data.table'){
 #' check_speedglm
 #' Internal function to verified speedglm() installation
 #' @param pkgName A string with the package name
-#' @keywords speedglm, large data set
-#' @export
+#' @return If speedglm is not installed, the function ask to install the package. If you the user decline, the standard glm()
+#' is used instead.
+#' @keywords speedglm, large data
 #' @author Reto Schmucki - retoschm[at]ceh.ac.uk
-#' @examples
+#' @seealso \code{\link[speedglm]{speedglm}}
 #' check_speedglm()
 
-check_speedglm <- function(pkgName='Speedglm'){
+check_speedglm <- function(pkgName='speedglm'){
         if(pkgName %in% installed.packages() == "FALSE") {
             print(paste(pkgName,"package is not installed.")
             x <- readline(paste("Do you want to install",pkgName,"? Y/N"))            
@@ -58,6 +59,7 @@ check_speedglm <- function(pkgName='Speedglm'){
             }
             if (toupper(x) == 'N') {
                 print(paste("This version require",pkgName,'glm() will be used instead'))
+                SpeedGlm<-FALSE
             }
         }
     }
@@ -66,11 +68,17 @@ check_speedglm <- function(pkgName='Speedglm'){
 #' check_names
 #' Internal function to verified if the required column names are found in a data.table
 #' @param x a data.table object with column names
-#' @param y vector with the reqired variable names
+#' @param y vector with the required variable names
+#' @return Verify if column names listed in \code{y} vector are found in the data set \code{x}, if not, a message identify the 
+#' missing column name.
+#' @details This function is insensitive to case as it initially transforms all names to uppercase, nevertheless for consistency, 
+#' it does not allow slightly different names. 
 #' @keywords variable name
 #' @export
 #' @author Reto Schmucki - retoschm[at]ceh.ac.uk
 #' @examples
+#' DF <- data.frame(DAY=c(1:5),MONTH=rep(month.name[2],5),YEAR=rep(format(Sys.Date(),'%Y'),5))
+#' check_names(DT,c('DAY','month','Years'))
 #' check_names()
 #'
 
@@ -156,8 +164,18 @@ ts_dwmy_table = function(InitYear=1970,LastYear=format(Sys.Date(),"%Y"),WeekDay1
     }
 
 
-### set_anchor internal function used by ts_monit_season to define the days where anchor should be set to "0" where
-###             AnchorLength and AnchorLag is provided by the function ts_monit_season()
+### 
+#' set_anchor
+#' internal function used by ts_monit_season() to add Anchors of "zeros" each side of the monitoring season
+#' @param FirstObs integer defining the start of the monitoring season - correspond to the day since
+#' @param LastObs integer defining the end of the monitoring season - correspond to the day since  
+#' @param AnchorLength integer defining the number of days used as Anchor each side of the monitoring season
+#' @param AnchorLag integer defining the number of days between the Anchor and the monitoring season
+#' @export
+#' @author Reto Schmucki - retoschm[at]ceh.ac.uk
+#' @examples
+#' set_anchor()
+#'
 
 set_anchor <- function(FirstObs,LastObs,AnchorLength=7,AnchorLag=7){
         
