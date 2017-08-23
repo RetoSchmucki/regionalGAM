@@ -240,11 +240,13 @@ ts_monit_season = function(d_series,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NU
             d_series[, COMPLT_SEASON:=ifelse(M_YEAR %in% d_series[M_SEASON>0L,unique(M_YEAR)],1L,0L)]
         }
    
+        d_series[,ANCHOR:=0L]
+
         if(isTRUE(Anchor)){
             first_obs <- d_series[M_SEASON>0L,min(DAY_SINCE),by=.(M_YEAR)]
             last_obs <- d_series[M_SEASON>0L,max(DAY_SINCE),by=.(M_YEAR)]
             anchor_day <- set_anchor(FirstObs=first_obs,LastObs=last_obs,AnchorLength=AnchorLength,AnchorLag=AnchorLag)
-            d_series <- d_series[,ANCHOR:=0L][DAY_SINCE %in% anchor_day,ANCHOR:=1L][DAY_SINCE %in% anchor_day,COUNT:=0L]
+            d_series <- d_series[DAY_SINCE %in% anchor_day,ANCHOR:=1L][DAY_SINCE %in% anchor_day,COUNT:=0L]
         } 
 
         return(d_series)
