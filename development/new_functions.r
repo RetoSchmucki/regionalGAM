@@ -26,7 +26,7 @@
 
 check_data.table <- function(pkgName='data.table'){
         if(pkgName %in% installed.packages() == "FALSE") {
-            print(paste(pkgName,"package is not installed.")
+            print(paste(pkgName,"package is not installed."))
             x <- readline(paste("Do you want to install",pkgName,"? Y/N"))            
             if (toupper(x) == 'Y') { 
                     install.packages(pkgName)
@@ -51,7 +51,7 @@ check_data.table <- function(pkgName='data.table'){
 
 check_speedglm <- function(pkgName='speedglm'){
         if(pkgName %in% installed.packages() == "FALSE") {
-            print(paste(pkgName,"package is not installed.")
+            print(paste(pkgName,"package is not installed."))
             x <- readline(paste("Do you want to install",pkgName,"? Y/N"))            
         
             if (toupper(x) == 'Y') { 
@@ -96,7 +96,7 @@ check_names <- function(x, y){
 ##
 ##  This function is used within the ts_dwmy_table() function
 
-#' build_date_seq
+#' ts_date_seq
 #' Generate a time-series of dates from one inital to an end years
 #' @param InitYear start year of the time-series, 4 numbers format (e.g 1987)
 #' @param LastYear end year of the time-series, if not provided, current year is used instead 
@@ -104,10 +104,10 @@ check_names <- function(x, y){
 #' @export
 #' @author Reto Schmucki - retoschm[at]ceh.ac.uk
 #' @examples
-#' build_date_seq()
+#' ts_date_seq()
 #'
 
-build_date_seq <- function(InitYear=1970,LastYear=format(Sys.Date(),"%Y")) {
+ts_date_seq <- function(InitYear=1970,LastYear=format(Sys.Date(),"%Y")) {
 
     init_date <- as.Date(paste((InitYear-1), "01-01", sep = "-"))
     last_date <- as.Date(paste((as.numeric(LastYear)+1), "12-31", sep = "-"))
@@ -421,7 +421,9 @@ fit_gam <- function(dataset_y,NbrSample=NbrSample,GamFamily=GamFamily,MaxTrial=M
         data.table::setkey(f_curve)
         f_curve <- unique(f_curve)
 
-    return(f_curve)
+        f_curve_mod <- list(f_curve=f_curve,f_model=gam_obj_site)
+
+    return(f_curve_mod)
 }
 
 ### flight_curve function to compute the flight curve from a GAM (fit_gam) from series of counts
@@ -465,20 +467,27 @@ flight_curve <- function(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,Min
                 print(paste("You have not enough sites with observations for estimating the flight curve for species",as.character(dataset_y$SPECIES[1]),"in", dataset_y$M_YEAR[1]))
             }else{
                 if(FcMethod=='regionalGAM'){
-                    f_curve <- fit_gam(dataset_y,NbrSample,GamFamily,MaxTrial,SpeedGam=SpeedGam,OptiGam=OptiGam,...)
+                    f_curve_mod <- fit_gam(dataset_y,NbrSample,GamFamily,MaxTrial,SpeedGam=SpeedGam,OptiGam=OptiGam,...)
                 }else{
                     print("ONLY the regionalGAM method is available so far!")
                 }
             }
 
             if ("f_pheno" %in% ls()) {
-                f_pheno <- rbind(f_pheno, f_curve)
+                f_pheno <- rbind(f_pheno, f_curve_mod$f_curve)
+                f_model_2 <- list(f_curve_mod$f_model)
+                names(f_model_2) <- paste0('FlightModel_',dataset_y$M_YEAR[1])
+                f_model <- c(f_model,f_model_2)
             }else {
-                f_pheno <- f_curve
+                f_pheno <- f_curve_mod$f_curve
+                f_model <- list(f_curve_mod$f_model) 
+                names(f_model) <- paste0('FlightModel_',dataset_y$M_YEAR[1])
             }    
         }
 
-    return(f_pheno)
+        f_pheno_mod <- list(f_pheno = f_pheno, f_model = f_model)
+
+    return(f_pheno_mod)
 }
 
 
@@ -536,9 +545,32 @@ fit_glm <- function(sp_count_flight_y,non_zero,FamilyGlm){
             }else{
                 sp_count_flight_y[SITE_ID %in% non_zero,FITTED:= predict.glm(glm_obj_site,newdata=sp_count_flight_y[SITE_ID %in% non_zero,],type = "response")]
             }
-        return(sp_count_flight_y)
+
+            sp_count_flight_mod_y <- list(sp_count_flight_y=sp_count_flight_y,glm_obj_site=glm_obj_site)
+
+        return(sp_count_flight_mod_y)
     }
 
+fit_glm.nb <- function(sp_count_flight_y,non_zero){
+
+            if(sp_count_flight_y[unique(SITE_ID),.N]>1){
+                glm_obj_site <- try(MASS::glm.nb(COUNT ~ factor(SITE_ID)+offset(NM),data=sp_count_flight_y[SITE_ID %in% non_zero,]),silent=TRUE)
+            } else {
+                glm_obj_site <- try(MASS::glm.nb(COUNT ~ offset(log(NM)) -1,data=sp_count_flight_y[SITE_ID %in% non_zero,]),silent=TRUE)
+            }
+
+            if (class(glm_obj_site)[1] == "try-error") {
+                sp_count_flight_y[SITE_ID %in% non_zero,c("FITTED","COUNT_IMPUTED"):=.(NA,NA)]
+                print(paste("Computation of abundance indices for year",sp_count_flight_y[1,M_YEAR,],"failed with the RegionalGAM, verify the data you provided for that year"))
+                next()
+            }else{
+                sp_count_flight_y[SITE_ID %in% non_zero,FITTED:= predict.glm(glm_obj_site,newdata=sp_count_flight_y[SITE_ID %in% non_zero,],type = "response")]
+            }
+
+            sp_count_flight_mod_y <- list(sp_count_flight_y=sp_count_flight_y,glm_obj_site=glm_obj_site)
+
+        return(sp_count_flight_mod_y)
+    }
 
 ### fit_speedglm function to fit and predict daily butterfly counts using the flight curve and the speedglm method provided in the speedglm package
 ### 
@@ -558,8 +590,11 @@ fit_speedglm <- function(sp_count_flight_y,non_zero,FamilyGlm){
                 print(paste("Computation of abundance indices for year",sp_count_flight_y[1,M_YEAR,],"failed with the RegionalGAM, verify the data you provided for that year"))
             }else{
                 sp_count_flight_y[SITE_ID %in% non_zero,FITTED:= predict(glm_obj_site,newdata=sp_count_flight_y[SITE_ID %in% non_zero,],type = "response")]
-            } 
-        return(sp_count_flight_y)
+            }
+
+            sp_count_flight_mod_y <- list(sp_count_flight_y=sp_count_flight_y,glm_obj_site=glm_obj_site)
+
+        return(sp_count_flight_mod_y)
     }
 
 
@@ -568,10 +603,12 @@ fit_speedglm <- function(sp_count_flight_y,non_zero,FamilyGlm){
 
 impute_count <- function(ts_season_count,ts_flight_curve,FamilyGlm=quasipoisson(),CompltSeason=TRUE,
                                     SelectYear=NULL,SpeedGlm=FALSE) {
+        
+        ts_flight_curve <- ts_flight_curve$f_pheno
 
         check_data.table()
         if(isTRUE(SpeedGlm)){
-            check_speedglm(SpeedGlm)
+            check_speedglm()
         }
         
         if(isTRUE(CompltSeason)){
@@ -588,7 +625,13 @@ impute_count <- function(ts_season_count,ts_flight_curve,FamilyGlm=quasipoisson(
         glmMet <- "glm()"
         if(isTRUE(SpeedGlm)){
             glmMet <- "speedglm()"
-        } 
+        }
+
+        if( FamilyGlm[1]=='nb' & isTRUE(SpeedGlm)){
+            glmMet <- "glm()"
+            SpeedGlm <- FALSE
+            cat('SpeedGlm is not implemented with Negative Binomial, we will use glm.nb() from the MASS package instead /n')
+        }
 
         if(is.null(SelectYear)){
             year_series <- ts_season_count[,unique(as.integer(M_YEAR))]
@@ -610,15 +653,19 @@ impute_count <- function(ts_season_count,ts_flight_curve,FamilyGlm=quasipoisson(
 
             if(length(non_zero)>=1){
                 if(isTRUE(SpeedGlm)){
-                    sp_count_flight_y <- fit_speedglm(sp_count_flight_y,non_zero,FamilyGlm)             
-                    if (class(glm_obj_site)[1] == "try-error") {
-                        next()
-                    }
+                    sp_count_flight_l <- fit_speedglm(sp_count_flight_y,non_zero,FamilyGlm)             
+                    sp_count_flight_y <- sp_count_flight_l$sp_count_flight_y
+                    sp_count_flight_mod <- sp_count_flight_l$glm_obj_site 
                 }else{
-                    sp_count_flight_y <- fit_glm(sp_count_flight_y,non_zero,FamilyGlm)    
-                    if (class(glm_obj_site)[1] == "try-error") {
-                        next()
-                    }         
+                    if(FamilyGlm[1]=='nb'){
+                    sp_count_flight_l <- fit_glm.nb(sp_count_flight_y,non_zero)    
+                    sp_count_flight_y <- sp_count_flight_l$sp_count_flight_y
+                    sp_count_flight_mod <- sp_count_flight_l$glm_obj_site
+                    }else{
+                    sp_count_flight_l <- fit_glm(sp_count_flight_y,non_zero,FamilyGlm)    
+                    sp_count_flight_y <- sp_count_flight_l$sp_count_flight_y
+                    sp_count_flight_mod <- sp_count_flight_l$glm_obj_site
+                    }  
                 }
             }
 
@@ -633,12 +680,21 @@ impute_count <- function(ts_season_count,ts_flight_curve,FamilyGlm=quasipoisson(
             }else{
                 sp_ts_season_count <- merge(sp_ts_season_count, sp_count_flight_y[,.(DAY_SINCE,SITE_ID,trimDAYNO,NM,FITTED,COUNT_IMPUTED)], all.x=TRUE) 
             }
+
+           if ("imp_glm_model" %in% ls()) {
+            glm_model <- list(sp_count_flight_mod)
+            names(glm_model) <- paste0('imput_glm_mod_',sp_count_flight_y[1,M_YEAR])
+            imp_glm_model <- c(imp_glm_model,glm_model)
+           } else { 
+            imp_glm_model <- list(sp_count_flight_mod)
+            names(imp_glm_model) <- paste0('imput_glm_mod_',sp_count_flight_y[1,M_YEAR])
+           }
         }
 
     if(!is.null(SelectYear)){
-        return(sp_ts_season_count[M_YEAR %in% SelectYear,])
+        return(list(sp_ts_season_count=sp_ts_season_count[M_YEAR %in% SelectYear,],glm_model=imp_glm_model))
     } else {
-        return(sp_ts_season_count)
+        return(list(sp_ts_season_count=sp_ts_season_count,glm_model=imp_glm_model))
     }
 } 
 

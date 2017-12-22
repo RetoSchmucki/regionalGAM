@@ -9,8 +9,8 @@ source(new_regionalgam_function.R)
 
 ### load your data monitoring visit and butterfly count.
 ## new_regionalgam\new_regionalgam_example.R
-m_visit <- data.table::fread("new_regionalgam/m_visit.csv",header=TRUE)
-m_count <- data.table::fread("new_regionalgam/m_count.csv",header=TRUE)
+m_visit <- data.table::fread("development/new_regionalgam/d_visit.csv",header=TRUE)
+m_count <- data.table::fread("development/new_regionalgam/d_count.csv",header=TRUE)
 
 # ### NORA's data
 # m_visit <- data.table::fread("new_regionalgam/d_visit.csv",header=TRUE)
@@ -31,7 +31,7 @@ ts_date <- ts_dwmy_table(InitYear=2010,LastYear=2017,WeekDay1='monday')
 ## Define your monitoring season, with StartMonth and EndMonth, StartDay and EndDay, if EndDay is not defined, the last day of the month
 ## will be used. If CompltSeason is set to TRUE, only these year with full monitoring season will be used. Anchor are extra zeros set at the
 ## begining and the end of the season to help closing the curve (length and lag are defining the weight of the Anchor) 
-ts_season <- ts_monit_season(ts_date,StartMonth=10,EndMonth=6,StartDay=1,EndDay=NULL,CompltSeason=TRUE,Anchor=TRUE,AnchorLength=7,AnchorLag=7)
+ts_season <- ts_monit_season(ts_date,StartMonth=10,EndMonth=6,StartDay=1,EndDay=NULL,CompltSeason=TRUE,Anchor=FALSE,AnchorLength=7,AnchorLag=7)
 
 ## The following two step need to done in this order
 m_visit <- df_visit_season(m_visit,ts_season)

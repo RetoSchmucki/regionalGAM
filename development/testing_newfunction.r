@@ -2,21 +2,24 @@
 ## Date: 21.07.2017
 
 ## NEED TO SOURCE new_functions.r
+r --vanilla
+
 
 # ## load monitoring visit and fixing dates
 
-# m_visit <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK Visits Table.txt",header=TRUE)
-# data.table::setnames(m_visit,"SITENO","SITE_ID"); data.table::setnames(m_visit,"VISIT_DATE","DATE")
-# m_visit[,DATE:=data.table::as.IDate(as.Date(m_visit$DATE,format="%d-%b-%y"))]
+m_visit <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK Visits Table.txt",header=TRUE)
+data.table::setnames(m_visit,"SITENO","SITE_ID"); data.table::setnames(m_visit,"VISIT_DATE","DATE")
+m_visit[,DATE:=data.table::as.IDate(as.Date(m_visit$DATE,format="%d-%b-%y"))]
 
-# m_count <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK CountsTable.txt",header=TRUE)
-# data.table::setnames(m_count,"SITENO","SITE_ID"); data.table::setnames(m_count,"VISITDATE","DATE")
-# m_count[,DATE:=data.table::as.IDate(as.Date(m_count$DATE,format="%d/%m/%Y"))]
-# m_count[,COUNT:=sum(COUNT),by=.(SITE_ID,SPECIES,DATE,DAY,MONTH,YEAR)][,SECTION:=NULL]
 
-# section_geo <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK Sections Table.txt",header=TRUE)
-# section_geo_sp <- section_geo[!is.na(section_geo$EAST)]
-# sp::coordinates(section_geo_sp) <- ~ EAST + NORTH
+m_count <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK CountsTable.txt",header=TRUE)
+data.table::setnames(m_count,"SITENO","SITE_ID"); data.table::setnames(m_count,"VISITDATE","DATE")
+m_count[,DATE:=data.table::as.IDate(as.Date(m_count$DATE,format="%d/%m/%Y"))]
+m_count[,COUNT:=sum(COUNT),by=.(SITE_ID,SPECIES,DATE,DAY,MONTH,YEAR)][,SECTION:=NULL]
+
+section_geo <- data.table::fread("W:/PYWELL_SHARED/Pywell Projects/BRC/BMS/eBMS/DATASETS/UK Sections Table.txt",header=TRUE)
+section_geo_sp <- section_geo[!is.na(section_geo$EAST)]
+sp::coordinates(section_geo_sp) <- ~ EAST + NORTH
 
 
 ### Test New Workflow with monitoring_year as main year indicator
@@ -49,7 +52,7 @@ m_count <- merge(m_count,nbr_visitperday,all.x=FALSE)        ## delete counts th
 m_count[,COUNT:=ceiling(COUNT/N)][,N:=1]
 
 
-
+## build example data sets
 
 v <- m_visit[SITE_ID %in% c(1:250) & DATE>='2000-01-01' & DATE<='2005-01-01']
 c <-  m_count[SITE_ID %in% c(1:250) & DATE>='2000-01-01' & DATE<='2005-01-01' & SPECIES %in% c(2,4)][,N:=NULL]
@@ -62,12 +65,12 @@ data.table::fwrite(c,file="m_count.csv",row.names=FALSE)
 # THAT HAVE BEEN MONITORED BETWEEN 2000 AND 2004 IN 140 sites across the UK
 # THE MONITORING SEASON WAS FROM APRIL TO SEPTEMBER (e.g. 4 to 9), BUT FOR DEMONSTRATION
 # YOU CAN GIVE IT A TRY IT FOR NOVEMBER TO AUGUST (e.g. 11 to 8) AND IT SHOULD WORK.
-setwd("C:/Users/RETOSCHM/OneDrive - Natural Environment Research Council/regionalGAM/development")
-source("new_functions.r")
+
+source(new_regionalgam_function.r)
 
 ### load your data monitoring visit and butterfly count.
-m_visit <- data.table::fread("new_regionalgam/m_visit.csv",header=TRUE)
-m_count <- data.table::fread("new_regionalgam/m_count.csv",header=TRUE)
+m_visit <- data.table::fread("m_visit.csv",header=TRUE)
+m_count <- data.table::fread("m_count.csv",header=TRUE)
 
 ### IMPORTANT! all function are now build on the data.table framework, so if your data are not in this format (e.g. data.frame), you need to convert them first.
 ## this is only required if you do not used data.table to load your data. Here is how it should be done
@@ -79,17 +82,16 @@ m_count <- data.table::data.table(m_count)
 ## define the full time-series of your analysis, where InitYear is the first year and
 ## LasYear the last year of monitoring in the data set.
 
-ts_date <- ts_dwmy_table(InitYear=2010,LastYear=2015,WeekDay1='monday')
+ts_date <- ts_dwmy_table(InitYear=2000,LastYear=2010,WeekDay1='monday')
 
 ## Define your monitoring season, with StartMonth and EndMonth, StartDay and EndDay, if EndDay is not defined, the last day of the month
 ## will be used. If CompltSeason is set to TRUE, only these year with full monitoring season will be used. Anchor are extra zeros set at the
-## beginning and the end of the season to help closing the curve (length and lag are defining the weight of the Anchor) 
-
+## begining and the end of the season to help closing the curve (length and lag are defining the weight of the Anchor) 
 ts_season <- ts_monit_season(ts_date,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NULL,CompltSeason=TRUE,Anchor=TRUE,AnchorLength=7,AnchorLag=7)
 
-## FIXED The following two step need to done in this order
-## m_visit <- df_visit_season(m_visit,ts_season)
-ts_season_visit <- ts_monit_site(m_visit,ts_season,DateFormat="%Y-%m-%d")
+## The following two step need to done in this order
+m_visit <- df_visit_season(m_visit,ts_season)
+ts_season_visit <- ts_monit_site(ts_season,m_visit)
 
   # check the species available in your data set
   m_count[order(SPECIES),unique(SPECIES)]
@@ -105,38 +107,28 @@ ts_season_count <- ts_monit_count_site(ts_season_visit,m_count,sp=2)
 ## increasing this will not help if it did not fit in the 3 first trials.
 ## GamFamily is the distribution of the error term used in the GAM.
 ## CompltSeason is a logical limiting modelling to complete season only.
-system.time({
-ts_flight_curve <- flight_curve(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,
-                                    FcMethod='regionalGAM',GamFamily='quasipoisson',CompltSeason=TRUE,
-                                    SelectYear=NULL,SpeedGam=TRUE,OptiGam=TRUE)
-})
+
+ts_flight_curve <- flight_curve(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,FcMethod='regionalGAM',GamFamily='poisson',CompltSeason=TRUE)
+
   ## plot the flight curves
-  dev.new()
-  plot(ts_flight_curve[M_YEAR==2010,trimDAYNO],ts_flight_curve[M_YEAR==2010,NM],type='l',xlab='Monitoring Year Day',ylab='Relative Abundance')
+  plot(ts_flight_curve[M_YEAR==2000,trimDAYNO],ts_flight_curve[M_YEAR==2000,NM],type='l',xlab='Monitoring Year Day',ylab='Relative Abundance')
   c <- 2
-  for(y in 2011:2015){
+  for(y in 2001:2015){
       points(ts_flight_curve[M_YEAR==y,trimDAYNO],ts_flight_curve[M_YEAR==y,NM],type='l',col=c)
       c <- c + 1
   }
+
   
 ## Use the output of the GAM model (flight curve) to impute values for missing counts, using a GLM 
-system.time({
-site_year_sp_count <- impute_count(ts_season_count,ts_flight_curve,FamilyGlm=quasipoisson(),CompltSeason=TRUE,
-                                    SelectYear=2010,SpeedGlm=FALSE)
-})
+site_year_sp_count <- impute_count(ts_season_count,ts_flight_curve)
 
   ## plot the fitted values and the observed observation
-dev.new()
-par(mfrow=c(1,2))
-   plot(site_year_sp_count[SITE_ID==1 & M_YEAR==2010,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2010,FITTED],col='blue',type='l',main='Season 2013',xlab='Monitoring Month',ylab='Fitted Count')
-   points(site_year_sp_count[SITE_ID==1 & M_YEAR==2010,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2010,COUNT],col='red')
-
-   plot(site_year_sp_count[SITE_ID==1 & M_YEAR==2013,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2013,FITTED],col='blue',type='l',main='Season 2013',xlab='Monitoring Month',ylab='Fitted Count')
-   points(site_year_sp_count[SITE_ID==1 & M_YEAR==2013,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2013,COUNT],col='red')
+  plot(site_year_sp_count[SITE_ID==1 & M_YEAR==2003,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2003,FITTED],col='blue',type='l',main='Season 2003',xlab='Monitoring Month',ylab='Fitted Count')
+  points(site_year_sp_count[SITE_ID==1 & M_YEAR==2003,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2003,COUNT],col='red')
 
   
 ## Compute the total number of butterfly days - abundance index per site and year.
-butterfly_index <- butterfly_day(site_year_sp_count_speed)
+butterfly_index <- butterfly_day(site_year_sp_count)
 
   ## plot the computed abundance indices as butterfly days (area under the curve of accumulated butterfly count)
   for(site in butterfly_index[,unique(SITE_ID)]){
@@ -145,16 +137,6 @@ butterfly_index <- butterfly_day(site_year_sp_count_speed)
   }
 
 ## NOTE MONITORING YEAR'S NAME IS BASED ON THE YEAR WHEN IT START.
-
-### simulated bms data set
-ts_sequence <- ts_dwmy_table(2014,2014)
-ts_season <- ts_monit_season(ts_sequence,4,9)
-ts_season_count <- sim_butterfly_nbr(ts_season,GenNumb=1,PeakPos=c(55),TotalEmerg=c(100),sigE=0.15, betE=3, MaxLife=10, ShapeA=0.5, ShapeB=0.2)
-m_day <- sim_monitoring_visit(ts_season,'weekly')
-
-site_count <- sim_butterfly_count(ts_season,NbrSite=2,GenNumb=1,PeakPos=c(40),TotalEmerg=c(100),MonitoringFreq=c("weekly"))
-
-
 
 
 ## test full time series allocation with real data 

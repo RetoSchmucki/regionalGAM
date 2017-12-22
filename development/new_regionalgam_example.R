@@ -5,11 +5,13 @@
 # YOU CAN GIVE IT A TRY IT FOR NOVEMBER TO AUGUST (e.g. 11 to 8) AND IT SHOULD WORK.
 
 # set you working directory and source the function script
-source(new_regionalgam_function.R)
+R --vanilla
+
+source('new_functions.r')
 
 ### load your data monitoring visit and butterfly count.
-m_visit <- data.table::fread("m_visit.csv",header=TRUE)
-m_count <- data.table::fread("m_count.csv",header=TRUE)
+m_visit <- data.table::fread("new_regionalgam/m_visit.csv",header=TRUE)
+m_count <- data.table::fread("new_regionalgam/m_count.csv",header=TRUE)
 
 ### IMPORTANT! all function are now build on the data.table framework, so if your data are not in this format (e.g. data.frame), you need to convert them first.
 ## this is only required if you do not used data.table to load your data. Here is how it should be done
@@ -21,16 +23,16 @@ m_count <- data.table::data.table(m_count)
 ## define the full time-series of your analysis, where InitYear is the first year and
 ## LasYear the last year of monitoring in the data set.
 
-ts_date <- ts_dwmy_table(InitYear=2000,LastYear=2000,WeekDay1='monday')
+ts_date <- ts_dwmy_table(InitYear=2000,LastYear=2003,WeekDay1='monday')
 
 ## Define your monitoring season, with StartMonth and EndMonth, StartDay and EndDay, if EndDay is not defined, the last day of the month
 ## will be used. If CompltSeason is set to TRUE, only these year with full monitoring season will be used. Anchor are extra zeros set at the
 ## begining and the end of the season to help closing the curve (length and lag are defining the weight of the Anchor) 
-ts_season <- ts_monit_season(ts_date,StartMonth=11,EndMonth=8,StartDay=1,EndDay=NULL,CompltSeason=TRUE,Anchor=TRUE,AnchorLength=7,AnchorLag=7)
+ts_season <- ts_monit_season(ts_date,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NULL,CompltSeason=TRUE,Anchor=TRUE,AnchorLength=7,AnchorLag=7)
 
 ## The following two step need to done in this order
 m_visit <- df_visit_season(m_visit,ts_season)
-ts_season_visit <- ts_monit_site(ts_season,m_visit)
+ts_season_visit <- ts_monit_site(m_visit,ts_season)
 
 # check the species available in your data set
 m_count[order(SPECIES),unique(SPECIES)]
@@ -44,35 +46,45 @@ ts_season_count <- ts_monit_count_site(ts_season_visit,m_count,sp=2)
 ## MinOccur is the minimum number of visit with count that a site needs to be included in the model
 ## MaxTrial is the maximum of trial to fit the model, if your number of site is less then NbrSample
 ## increasing this will not help if it did not fit in the 3 first trials.
-## GamFamily is the distribution of the error term used in the GAM.
+## GamFamily is the distribution of the error term used in the GAM ('poisson', 'nb',...).
 ## CompltSeason is a logical limiting modelling to complete season only.
 
-ts_flight_curve <- flight_curve(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,FcMethod='regionalGAM',GamFamily='poisson',CompltSeason=TRUE)
+system.time(ts_flight_curve <- flight_curve(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,
+                            MaxTrial=3,FcMethod='regionalGAM',GamFamily='nb',SpeedGam=FALSE,CompltSeason=TRUE))
+
+summary(ts_flight_curve$f_model[[2]])
+
+system.time(ts_flight_curve <- flight_curve(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,
+                            MaxTrial=3,FcMethod='regionalGAM',GamFamily='quasipoisson',CompltSeason=TRUE))
 
 ## plot the flight curves
-plot(ts_flight_curve[M_YEAR==2000,trimDAYNO],ts_flight_curve[M_YEAR==2000,NM],type='l',xlab='Monitoring Year Day',ylab='Relative Abundance')
+ts_flight_curve$f_pheno
+
+plot(ts_flight_curve$f_pheno[M_YEAR==2000,trimDAYNO],ts_flight_curve$f_pheno[M_YEAR==2000,NM],type='l',ylim=c(0,max(ts_flight_curve$f_pheno[,NM])),xlab='Monitoring Year Day',ylab='Relative Abundance')
 c <- 2
 for(y in 2001:2005){
-  points(ts_flight_curve[M_YEAR==y,trimDAYNO],ts_flight_curve[M_YEAR==y,NM],type='l',col=c)
+  points(ts_flight_curve$f_pheno[M_YEAR==y,trimDAYNO],ts_flight_curve$f_pheno[M_YEAR==y,NM],type='l',col=c)
   c <- c + 1
 }
-
+legend('topright',legend=c(2000:2005),col=c(seq_along(c(2000:2005))),lty=1,bty='n')
 
 ## Use the output of the GAM model (flight curve) to impute values for missing counts, using a GLM 
-site_year_sp_count <- impute_count(ts_season_count,ts_flight_curve)
+site_year_sp_count <- impute_count(ts_season_count,ts_flight_curve,FamilyGlm='nb')
 
 ## plot the fitted values and the observed observation
-plot(site_year_sp_count[SITE_ID==1 & M_YEAR==2003,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2003,FITTED],col='blue',type='l',main='Season 2003',xlab='Monitoring Month',ylab='Fitted Count')
-points(site_year_sp_count[SITE_ID==1 & M_YEAR==2003,DATE],site_year_sp_count[SITE_ID==1 & M_YEAR==2003,COUNT],col='red')
-
+plot(site_year_sp_count$sp_ts_season_count[SITE_ID==2 & M_YEAR==2003,DATE],site_year_sp_count$sp_ts_season_count[SITE_ID==2 & M_YEAR==2003,FITTED],ylim=c(0,max(site_year_sp_count$sp_ts_season_count[SITE_ID==2 & M_YEAR==2003,COUNT_IMPUTED])),col='blue',type='l',main='Season 2003',xlab='Monitoring Month',ylab='Fitted Count')
+points(site_year_sp_count$sp_ts_season_count[SITE_ID==2 & M_YEAR==2003,DATE],site_year_sp_count$sp_ts_season_count[SITE_ID==2 & M_YEAR==2003,COUNT],col='red')
 
 ## Compute the total number of butterfly days - abundance index per site and year.
 butterfly_index <- butterfly_day(site_year_sp_count)
 
+dev.new()
+hist(butterfly_index$BUTTERFLY_DAY)
 ## plot the computed abundance indices as butterfly days (area under the curve of accumulated butterfly count)
 for(site in butterfly_index[,unique(SITE_ID)]){
   plot(butterfly_index[SITE_ID==site,M_YEAR],butterfly_index[SITE_ID==site,BUTTERFLY_DAY],main=paste("SITE:",site),xlab='Monitoring Year',ylab='Butterfly Days')
   Sys.sleep(0.5)
 }
+
 
 ## NOTE MONITORING YEAR'S NAME IS BASED ON THE YEAR WHEN IT START.
