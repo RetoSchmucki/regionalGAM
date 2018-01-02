@@ -15,8 +15,8 @@ m_count <- data.table::fread("new_regionalgam/m_count.csv",header=TRUE)
 
 ### IMPORTANT! all function are now build on the data.table framework, so if your data are not in this format (e.g. data.frame), you need to convert them first.
 ## this is only required if you do not used data.table to load your data. Here is how it should be done
-m_visit <- data.table::data.table(m_visit)
-m_count <- data.table::data.table(m_count)
+## m_visit <- data.table::data.table(m_visit)
+## m_count <- data.table::data.table(m_count)
 
 ## =====
 ## 2. build a long time-series to cover all days for the period we are interested in
@@ -30,8 +30,6 @@ ts_date <- ts_dwmy_table(InitYear=2000,LastYear=2003,WeekDay1='monday')
 ## begining and the end of the season to help closing the curve (length and lag are defining the weight of the Anchor) 
 ts_season <- ts_monit_season(ts_date,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NULL,CompltSeason=TRUE,Anchor=TRUE,AnchorLength=7,AnchorLag=7)
 
-## The following two step need to done in this order
-m_visit <- df_visit_season(m_visit,ts_season)
 ts_season_visit <- ts_monit_site(m_visit,ts_season)
 
 # check the species available in your data set
