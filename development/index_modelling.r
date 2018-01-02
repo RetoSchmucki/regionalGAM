@@ -1,361 +1,42 @@
 ##==========================================
-## Name Convention
+## Name Convention in the rbms package
 ##
 ##      FUNCTION: ts_snake_function()
 ##      ARGUMENT: CamelNotation
 ##      OBJECT: object_snake_name
 ##      VARIABLE NAME: UPPER_CASE
 ##
-##      Date:   20.07.2017
+##      Date:   02.01.2018
 ##
-##      Update: 14.08.2017
+##      index_modelling: function for abundance index model
 ##
 ##==========================================
 
 
-### check_datatable function to verify if the data.table package is installed
-
-#' check_data.table
-#' Internal function to verified data.table() installation
-#' @param pkgName A string with the package name
-#' @keywords data.table()
-#' @return If data.table is not installed, the function ask to install the package.
-#' @author Reto Schmucki - retoschm[at]ceh.ac.uk
-#' @seealso \code{\link[data.table]{data.table}}
-#' check_data.table()
-
-check_data.table <- function(pkgName='data.table'){
-        if(pkgName %in% installed.packages() == "FALSE") {
-            print(paste(pkgName,"package is not installed."))
-            x <- readline(paste("Do you want to install",pkgName,"? Y/N"))            
-            if (toupper(x) == 'Y') { 
-                    install.packages(pkgName)
-            }
-            if (toupper(x) == 'N') {
-                print(paste("This version strictly requires",pkgName))
-            }
-        }
-    }
-
-### check_speedglm function to verify if the speedglm package is installed
-
-#' check_speedglm
-#' Internal function to verified speedglm() installation
-#' @param pkgName A string with the package name
-#' @return If speedglm is not installed, the function ask to install the package. If you the user decline, the standard glm()
-#' is used instead.
-#' @keywords speedglm, large data
-#' @author Reto Schmucki - retoschm[at]ceh.ac.uk
-#' @seealso \code{\link[speedglm]{speedglm}}
-#' check_speedglm()
-
-check_speedglm <- function(pkgName='speedglm'){
-        if(pkgName %in% installed.packages() == "FALSE") {
-            print(paste(pkgName,"package is not installed."))
-            x <- readline(paste("Do you want to install",pkgName,"? Y/N"))            
-        
-            if (toupper(x) == 'Y') { 
-                    install.packages(pkgName)
-            }
-            if (toupper(x) == 'N') {
-                print(paste("This version require",pkgName,'glm() will be used instead'))
-                SpeedGlm<-FALSE
-            }
-        }
-    }
-### check_names function is a generic function to verify if the provided data.table contains the required column names
-
-#' check_names
-#' Internal function to verified if the required column names are found in a data.table
-#' @param x a data.table object with column names
-#' @param y vector with the required variable names
-#' @return Verify if column names listed in \code{y} vector are found in the data set \code{x}, if not, a message identify the 
-#' missing column name.
-#' @details This function is insensitive to case as it initially transforms all names to uppercase, nevertheless for consistency, 
-#' it does not allow slightly different names. 
-#' @keywords variable name
-#' @export
+#' fit_gam
+#' fit a Generalized Additive Model to butterfly count data to extract the annual flight curve.
+#' @param dataset_y data.table with filtered butterfly counts for species x over year y over all sites.
+#' @param NbrSample integer inherited from \code{link{flight_curve}}, default=100.
+#' @param GamFamily string inherited from \code{link{flight_curve}}, default='poisson', but can be 'nb' or 'quasipoisson'.
+#' @param MaxTrial integer inherited from \code{link{flight_curve}}, default=3.
+#' @param SpeedGam Logical to use the \code{link[mgcv]{bam}} method instead of the \code{link[mgcv]{gam}} method.
+#' @param OptiGam Logical to set use bam when data are larger than 100 and gam for smaller dataset
+#' @param ... additional parameters passed to gam or bam function from the \code{link[mgcv]{gam}} package. 
+#' @return A list with two object, i) a data.table with the fligth curve \code{f_curve} with expected relative abudance, normalize to sum to one over a full season,
+#'         and ii) the resulting gam model \code{f_model} fitted on the count data.
+#' @keywords gam
+#' @seealso \code{\link{flight_curve}}, \code{link[mgcv]{gam}}, \code{link[mgcv]{bam}}
 #' @author Reto Schmucki - retoschm[at]ceh.ac.uk
 #' @examples
-#' DF <- data.frame(DAY=c(1:5),MONTH=rep(month.name[2],5),YEAR=rep(format(Sys.Date(),'%Y'),5))
-#' check_names(DT,c('DAY','month','Years'))
-#' check_names()
+#' fit_gam()
 #'
 
-check_names <- function(x, y){
-        dt_names <- y %in% names(x)
-        if(sum(dt_names)!=length(y)) {
-            stop(paste('You need to have a variable named -', paste(y[!dt_names],collapse=' & '), '- in table',deparse(substitute(x)),'\n'))
-        }
-    }
-
-
-###  ts_date_seq  function to build a full time series sequence of date since initial year to an ending year
-###         to subset a time-series template for specified monitoring season, independent of 
-###         the year
-##
-##  This function is used within the ts_dwmy_table() function
-
-#' ts_date_seq
-#' Generate a time-series of dates from one inital to an end years
-#' @param InitYear start year of the time-series, 4 numbers format (e.g 1987)
-#' @param LastYear end year of the time-series, if not provided, current year is used instead 
-#' @keywords time series
-#' @export
-#' @author Reto Schmucki - retoschm[at]ceh.ac.uk
-#' @examples
-#' ts_date_seq()
-#'
-
-ts_date_seq <- function(InitYear=1970,LastYear=format(Sys.Date(),"%Y")) {
-
-    init_date <- as.Date(paste((InitYear-1), "01-01", sep = "-"))
-    last_date <- as.Date(paste((as.numeric(LastYear)+1), "12-31", sep = "-"))
-
-    date_series <- as.POSIXct(seq(from=init_date, to= last_date, by = "day"), format = "%Y-%m-%d")
-    date_series <- date_series[!format(date_series,'%Y') %in% c((InitYear-1),as.numeric(LastYear)+1)]
-
-    return(date_series)
-
-    }
-
-
-###  ts_dwmy_table  function to build a full time series sequence of days, iso weeks, week-days (1:monday, 7:sunday), 
-###         months and years to subset a time-series template for specified monitoring season,
-###         independent of the year
-
-## alternative name -> build_ts
-
-#' ts_dwmy_table
-#' Generate a time-series of dates from one inital to an end years
-#' @param InitYear start year of the time-series, 4 numbers format (e.g 1987)
-#' @param LastYear end year of the time-series, if not provided, current year is used instead 
-#' @param WeekDay1
-#' @keywords time series
-#' @export
-#' @author Reto Schmucki - retoschm[at]ceh.ac.uk
-#' @examples
-#' ts_dwmy_table()
-#'
-
-ts_dwmy_table = function(InitYear=1970,LastYear=format(Sys.Date(),"%Y"),WeekDay1='monday') {
-
-        check_data.table()
-        date_seq <- ts_date_seq(InitYear,LastYear)
-
-        if(WeekDay1=='monday'){
-            w <- c(7,1:6)
-        }else{
-            w <- c(1:7)
-        }
-
-        dt_iso_dwmy <- data.table::data.table(
-                                DATE=data.table::as.IDate(date_seq),
-                                DAY_SINCE=seq_along(date_seq))#,
-        #                       YEAR=data.table::year(date_seq),
-        #                       MONTH=data.table::month(date_seq),
-        #                       DAY=data.table::mday(date_seq),
-        #                       WEEK=data.table::isoweek(date_seq),
-        #                       WEEK_DAY=w[data.table::wday(date_seq)])
-        #                       
-
-        return(dt_iso_dwmy)
-
-    }
-
-
-### 
-#' set_anchor
-#' internal function used by ts_monit_season() to add Anchors of "zeros" each side of the monitoring season
-#' @param FirstObs integer defining the start of the monitoring season - correspond to the day since
-#' @param LastObs integer defining the end of the monitoring season - correspond to the day since  
-#' @param AnchorLength integer defining the number of days used as Anchor each side of the monitoring season
-#' @param AnchorLag integer defining the number of days between the Anchor and the monitoring season
-#' @export
-#' @author Reto Schmucki - retoschm[at]ceh.ac.uk
-#' @examples
-#' set_anchor()
-#'
-
-set_anchor <- function(FirstObs,LastObs,AnchorLength=7,AnchorLag=7){
-        
-        x <- FirstObs$V1-(AnchorLength+AnchorLag)
-        y <- FirstObs$V1-(AnchorLag+1)
-        before_anchor <- c(apply(as.matrix(cbind(x,y)),1,function(w) w[1]:w[2]))
-        
-        x <- LastObs$V1+(AnchorLength+AnchorLag)
-        y <- LastObs$V1+(AnchorLag+1)
-        after_anchor <- c(apply(as.matrix(cbind(x,y)),1,function(w) w[2]:w[1]))
-
-        anchor_day <- c(before_anchor,after_anchor)
-
-        return(anchor_day)
-
-    }
-
-
-###  ts_monit_season  function to build a full time_series sequence of monitoring season, with specific starting 
-###             and ending months and days, the season can start in year y and end in year y+1.
-##
-##      This function need the object (data.table) created by the "ts_dwmy_table()" function 
-##      NOTE: if the monitoring season goes over two years (i.e. winter, December-January) the SEASON YEAR is shifted to set the monitoring season within a continuous year'
-##      named according to the year at the start. Here the monitoring season is set in the middle or year' to give some room to set ANCHORs  before and after the monitoring 
-##      season.
-
-## alternative name -> align_season_ts
-
-ts_monit_season = function(d_series,StartMonth=4,EndMonth=9,StartDay=1,EndDay=NULL,CompltSeason=TRUE,Anchor=TRUE,AnchorLength=7,AnchorLag=7){
-        
-        check_data.table()
-        d_series <- data.table::copy(d_series)
-
-        names(d_series) <- toupper(names(d_series))
-        check_names(d_series,c("DATE"))
-
-        ## NO leap year
-        if(is.null(EndDay)) {
-            EndDay <- max(data.table::mday(seq(from=as.Date(paste0('2017-',EndMonth,'-01')),by='day',length=31)))
-        } 
-
-        if (StartMonth < EndMonth){
-            s_month <- c(StartMonth:EndMonth)
-            month_days_out <- c(paste(StartMonth,c(0:(StartDay-1))),paste(EndMonth,c((EndDay+1):32)))
-            y_series <- data.table::data.table(M_YEAR=as.factor(data.table::year(d_series$DATE)),
-                                               M_SEASON=ifelse(((data.table::month(d_series$DATE)%in%(s_month)) & (!(paste(data.table::month(d_series$DATE),data.table::mday(d_series$DATE)) %in% month_days_out))),1L,0L))                               
-        }
-
-        if (StartMonth > EndMonth){
-            s_month <- c(StartMonth:12,1:EndMonth)
-            month_days_out <- c(paste(StartMonth,c(0:(StartDay-1))),paste(EndMonth,c((EndDay+1):32)))
-            y_series <- data.table::data.table(M_YEAR=as.factor(ifelse(data.table::month(d_series$DATE)>=StartMonth-floor((12-length(s_month))/2),data.table::year(d_series$DATE),(data.table::year(d_series$DATE)-1))),
-                                               M_SEASON=ifelse(((data.table::month(d_series$DATE)%in%(s_month)) & (!(paste(data.table::month(d_series$DATE),data.table::mday(d_series$DATE))%in%month_days_out))),1L,0L))                               
-        }
-
-        d_series <- d_series[,c("M_YEAR","M_SEASON") := y_series[,.(M_YEAR,(as.numeric(M_YEAR)*M_SEASON))]]
-
-        if(isTRUE(CompltSeason)){       
-            d_series[,START_END:=d_series[,ifelse(data.table::month(DATE)==StartMonth & data.table::mday(DATE)==StartDay,1L,0L)] + d_series[,ifelse(data.table::month(DATE)==EndMonth & data.table::mday(DATE)==EndDay,1L,0L)]]
-            d_series[,M_SEASON:=ifelse(M_YEAR %in% (d_series[,sum(START_END),by=M_YEAR][V1==2,M_YEAR]),1L,0L)*M_SEASON][,START_END:=NULL]
-            d_series[M_SEASON>0L,M_SEASON:=M_SEASON-(min(d_series[M_SEASON>0L,M_SEASON])-1)]
-            d_series[, COMPLT_SEASON:=ifelse(M_YEAR %in% d_series[M_SEASON>0L,unique(M_YEAR)],1L,0L)]
-        }
-   
-        d_series[,ANCHOR:=0L]
-
-        if(isTRUE(Anchor)){
-            first_obs <- d_series[M_SEASON>0L,min(DAY_SINCE),by=.(M_YEAR)]
-            last_obs <- d_series[M_SEASON>0L,max(DAY_SINCE),by=.(M_YEAR)]
-            anchor_day <- set_anchor(FirstObs=first_obs,LastObs=last_obs,AnchorLength=AnchorLength,AnchorLag=AnchorLag)
-            d_series <- d_series[DAY_SINCE %in% anchor_day,ANCHOR:=1L][DAY_SINCE %in% anchor_day,COUNT:=0L]
-        } 
-
-        return(d_series)
-    }
-
-
-## df_visit_season function identify the monitoring season for each visit, the M_YEAR should then be used as reference to 
-##              identify the site that have been monitored in specific monitoring year
-
-df_visit_season <- function(m_visit,ts_season,DateFormat="%Y-%m-%d"){
-            
-            check_data.table()
-            m_visit <- data.table::copy(m_visit[,.(DATE,SITE_ID)])
-            m_visit[,DATE:=data.table::as.IDate(as.Date(m_visit$DATE,format=DateFormat))]
-
-            season_year <- ts_season[,.(DATE,M_YEAR)] 
-
-            data.table::setkey(m_visit,DATE)
-            data.table::setkey(season_year,DATE)
-
-            m_visit <- merge(m_visit,season_year,all.x=FALSE)
-
-        return(m_visit)
-
-    }
-
-### ts_monit_site function to augment the time series in m_season with all sites and visits with "zeros", leaving all non visited day 
-###                 with and <NA>, this can then be used to add the observed count for specific species
-###                 only have time series for years when a site has been monitored.
-
-## alternative name -> align_visit_season
-
-ts_monit_site = function(m_visit,ts_season,DateFormat="%Y-%m-%d") {
-
-            check_data.table()
-            names(ts_season) <- toupper(names(ts_season))
-            check_names(ts_season,c("DATE","M_YEAR","M_SEASON"))
-            
-            names(m_visit) <- toupper(names(m_visit))
-            check_names(m_visit,c("DATE","SITE_ID"))
-
-            m_visit <- df_visit_season(m_visit,ts_season,DateFormat=DateFormat)
-
-            data.table::setkey(ts_season,DATE)
-            data.table::setkey(m_visit,DATE)
-
-            r_year <-ts_season[,range(data.table::year(DATE))]
-            m_visit <- m_visit[DATE %in% ts_season[M_SEASON>0L,DATE],]
-        
-            monit_syl <- m_visit[data.table::year(DATE)>=min(r_year) & 
-                        data.table::year(DATE)<=max(r_year),
-                        .(SITE_ID=.SD[,unique(SITE_ID)]),by=M_YEAR]
-
-            data.table::setkey(monit_syl,M_YEAR,SITE_ID)
-            data.table::setkey(ts_season,M_YEAR)
-
-            ts_season_site <- merge(ts_season,monit_syl,by.x="M_YEAR",by.y="M_YEAR",allow.cartesian=TRUE)
-
-            data.table::setkey(ts_season_site,DATE,SITE_ID)
-            data.table::setkey(m_visit,DATE,SITE_ID)
-
-            ts_season_site <- ts_season_site[m_visit,COUNT:=0L][M_SEASON==0L & ANCHOR==0L,COUNT:=NA]
-
-        return(ts_season_site)
-
-    }
-  
-
-### ts_count_site_visit function to generate a full time series of observed count,
-###                     for each day since a starting and ending years of the defined
-###                     time series
-
-## alternative name -> align_visit_season  
-
-ts_monit_count_site = function(m_season_site,m_count,sp=1,DateFormat="%Y-%m-%d") {
-
-        check_data.table()
-        names(m_season_site) <- toupper(names(m_season_site))
-        check_names(m_season_site,c("DATE","SITE_ID","COUNT"))
-
-        names(m_count) <- toupper(names(m_count))
-        check_names(m_count,c("DATE","SITE_ID","SPECIES","COUNT"))
-        m_count[,DATE:=data.table::as.IDate(as.Date(m_count$DATE,format=DateFormat))]
-
-        if(!sp %in% m_count[,unique(SPECIES)]){
-            stop(paste("Species",sp,"is not found in your dataset, check your \"sp\" argument."))
-        }else{
-            m_sp_count <- m_count[SPECIES %in% sp,]
-            data.table::setkey(m_sp_count,DATE,SITE_ID,SPECIES)
-            data.table::setkey(m_season_site,DATE,SITE_ID)
-            spcount_site_series <- m_season_site[m_sp_count,COUNT:=m_sp_count[,as.integer(COUNT)]]
-            spcount_site_series[,SPECIES:=sp]
-        }
-
-        return(spcount_site_series)
-
-    }
-
-
-### fit_gam function to fit a GAM on series of count data
-###         where the user can select the maximum number of site to be used to fit the model
-###         the family of the model (error distribution) and the maximum number of trial to
-###         perform if convergence has not been met
-
-fit_gam <- function(dataset_y,NbrSample=NbrSample,GamFamily=GamFamily,MaxTrial=MaxTrial,SpeedGam=TRUE,OptiGam=TRUE,...){
-
-        check_data.table()
-        if (length(dataset_y[,unique(SITE_ID)]) > NbrSample) {
-            sp_data_all <- data.table::copy(dataset_y[SITE_ID %in% sample(dataset_y[,unique(SITE_ID)],NbrSample,replace=FALSE),])
+fit_gam <- function(dataset_y, NbrSample=NbrSample, GamFamily=GamFamily, MaxTrial=MaxTrial,
+                    SpeedGam=TRUE, OptiGam=TRUE, ...){
+
+        check_package('data.table')
+        if (length(dataset_y[, unique(SITE_ID)]) > NbrSample) {
+            sp_data_all <- data.table::copy(dataset_y[SITE_ID %in% sample(dataset_y[, unique(SITE_ID)], NbrSample, replace=FALSE), ])
         }else{
             sp_data_all <- data.table::copy(dataset_y)
         }
@@ -363,16 +44,16 @@ fit_gam <- function(dataset_y,NbrSample=NbrSample,GamFamily=GamFamily,MaxTrial=M
         tr <- 1
         gam_obj_site <- c()
 
-        while((tr==1 | class(gam_obj_site)[1] == "try-error") & tr<=MaxTrial){
+        while((tr==1 | class(gam_obj_site)[1] == "try-error") & tr <= MaxTrial){
 
-            if (length(dataset_y[,unique(SITE_ID)]) > NbrSample) {
-                sp_data_all <- data.table::copy(dataset_y[SITE_ID %in% sample(dataset_y[,unique(SITE_ID)],NbrSample,replace=FALSE),])
+            if (length(dataset_y[, unique(SITE_ID)]) > NbrSample) {
+                sp_data_all <- data.table::copy(dataset_y[SITE_ID %in% sample(dataset_y[, unique(SITE_ID)], NbrSample, replace=FALSE), ])
             }else{
                 sp_data_all <- data.table::copy(dataset_y)
             }
 
             if(isTRUE(OptiGam)){
-                if(length(sp_data_all[,unique(SITE_ID)])< 100){
+                if(length(sp_data_all[, unique(SITE_ID)]) < 100){
                     SpeedGam <- FALSE
                 }
             }
@@ -382,46 +63,48 @@ fit_gam <- function(dataset_y,NbrSample=NbrSample,GamFamily=GamFamily,MaxTrial=M
                 gamMethod <-'SpeedGAM [bam()]'
             }
             
-            print(paste("Fitting the RegionalGAM for species",as.character(sp_data_all$SPECIES[1]),"and year",sp_data_all$M_YEAR[1],"with",length(sp_data_all[,unique(SITE_ID)]),"sites, using",gamMethod,":",Sys.time(),"-> trial",tr))
+            print(paste("Fitting the RegionalGAM for species", as.character(sp_data_all$SPECIES[1]), "and year", sp_data_all$M_YEAR[1], "with", 
+                        length(sp_data_all[, unique(SITE_ID)]), "sites, using", gamMethod,":", Sys.time(), "-> trial", tr))
             
             if(isTRUE(SpeedGam)){
-                if(length(sp_data_all[,unique(SITE_ID)])>1){
-                    gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE_ID) -1, data=sp_data_all, family=GamFamily,...), silent = TRUE)
+                if(length(sp_data_all[, unique(SITE_ID)]) > 1){
+                    gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE_ID) -1, data=sp_data_all, family=GamFamily, ...), silent = TRUE)
                 }else {
-                    gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr")  -1, data=sp_data_all, family=GamFamily,...), silent = TRUE)
+                    gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr")  -1, data=sp_data_all, family=GamFamily, ...), silent = TRUE)
                 }
 
             } else {
-                if(length(sp_data_all[,unique(SITE_ID)])>1){
-                    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE_ID) -1, data=sp_data_all, family=GamFamily,...), silent = TRUE)
+                if(length(sp_data_all[, unique(SITE_ID)]) > 1){
+                    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE_ID) -1, data=sp_data_all, family=GamFamily, ...), silent = TRUE)
                 }else {
-                    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1, data=sp_data_all, family=GamFamily,...), silent = TRUE)
+                    gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1, data=sp_data_all, family=GamFamily, ...), silent = TRUE)
                 }
             }
-            tr <- tr+1
+            tr <- tr + 1
         }
 
         ## predict from fitted model ##
         if (class(gam_obj_site)[1] == "try-error") {
-            print(paste("Error in fitting the RegionalGAM for species",as.character(sp_data_all$SPECIES[1]),"and year", sp_data_all$M_YEAR[1],"; Model did not converge after",tr,"trials"))
-            sp_data_all[,c("FITTED","NM"):=.(NA,NA)]
+            print(paste("Error in fitting the RegionalGAM for species", as.character(sp_data_all$SPECIES[1]), "and year", sp_data_all$M_YEAR[1],
+                    "; Model did not converge after", tr, "trials"))
+            sp_data_all[, c("FITTED", "NM") := .(NA, NA)]
         }else{
-            sp_data_all[,FITTED:=mgcv::predict.gam(gam_obj_site, newdata = sp_data_all[,c("trimDAYNO", "SITE_ID")], type = "response")]
-            sp_data_all[M_SEASON==0L,FITTED:=0]
+            sp_data_all[, FITTED := mgcv::predict.gam(gam_obj_site, newdata = sp_data_all[,c("trimDAYNO", "SITE_ID")], type = "response")]
+            sp_data_all[M_SEASON == 0L, FITTED := 0]
 
-            if(sum(is.infinite(sp_data_all[,FITTED]))>0){
-                sp_data_all[,c("FITTED","NM"):=.(NA,NA)]
+            if(sum(is.infinite(sp_data_all[, FITTED])) > 0){
+                sp_data_all[, c("FITTED", "NM") := .(NA, NA)]
             }else{
-                sp_data_all[,SITE_SUM:=sum(FITTED),by=SITE_ID]
-                sp_data_all[,NM:=round(FITTED/SITE_SUM,5)]
+                sp_data_all[, SITE_SUM := sum(FITTED), by=SITE_ID]
+                sp_data_all[, NM := round(FITTED / SITE_SUM, 5)]
             }
         }
 
-        f_curve <- sp_data_all[,.(SPECIES,DATE,DAY_SINCE,M_YEAR,M_SEASON,trimDAYNO,NM)]
+        f_curve <- sp_data_all[, .(SPECIES, DATE, WEEK, WEEK_DAY, DAY_SINCE, M_YEAR, M_SEASON, trimDAYNO,NM)]
         data.table::setkey(f_curve)
         f_curve <- unique(f_curve)
 
-        f_curve_mod <- list(f_curve=f_curve,f_model=gam_obj_site)
+        f_curve_mod <- list(f_curve=f_curve, f_model=gam_obj_site)
 
     return(f_curve_mod)
 }
@@ -429,45 +112,68 @@ fit_gam <- function(dataset_y,NbrSample=NbrSample,GamFamily=GamFamily,MaxTrial=M
 ### flight_curve function to compute the flight curve from a GAM (fit_gam) from series of counts
 ###             where the user can define the criteria required for site to be included in the flight
 ###             curve computation. So far, only one method is available, namely the regionalGAM.
+#' flight_curve
+#' Compute the annual flight curve from butterfly count data collated across multiple sites.
+#' @param ts_season_count data.table ... 
+#' @param NbrSample integer setting the maximum number of site to use to compute the flight curve, default=100.
+#' @param MinVisit integer setting the minimum number of visit required for a site to included in the computation, default=3.
+#' @param MinOccur integer setting the minimum number of positive records (e.g. >= 1) observed over the year in a site default=2. 
+#' @param MinNbrSite integer setting the minimum number of site required to compute the flight curve, default=1.
+#' @param MaxTrial integer setting the maximum number of trial to reach convergence of the model, default=3.
+#' @param FcMethod string defining the method to be used for computation of the flight curve, default='regionalGAM' (no other method is available yet).
+#' @param GamFamily string setting the distribution of the error term in the GAM, default='poisson', but can be 'nb' or 'quasipoisson'.
+#' @param CompltSeason Logical to restrict computation of flight curve for years where the complete season has been sampled, default=TRUE.
+#' @param SelectYear integer to select a specific year to compute the flight curve, default=NULL.
+#' @param SpeedGam Logical to use the \code{link[mgcv]{bam}} method instead of the \code{link[mgcv]{gam}} method.
+#' @param OptiGam Logical to set use bam when data are larger than 100 and gam for smaller dataset
+#' @param ... additional parameters passed to gam or bam function from the \code{link[mgcv]{gam}} package. 
+#' @return A list with two object, i) a vector with annual fligth curves \code{f_pheno} with expected relative abudance, normalize to sum to one over a full season,
+#'         and ii) a list of the resulting gam models \code{f_model} fitted on the count data for each year.
+#' @keywords gam, flight curve
+#' @seealso \code{\link{fit_gam}}, \code{link[mgcv]{gam}}, \code{link[mgcv]{bam}}
+#' @author Reto Schmucki - retoschm[at]ceh.ac.uk
+#' @examples
+#' flight_curve()
+#'
 
-flight_curve <- function(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,MinNbrSite=1,MaxTrial=3,FcMethod='regionalGAM',
-                            GamFamily='poisson',CompltSeason=TRUE,SelectYear=NULL,SpeedGam=TRUE,OptiGam=TRUE,...) {
+flight_curve <- function(ts_season_count, NbrSample=100, MinVisit=3, MinOccur=2, MinNbrSite=1, MaxTrial=3, FcMethod='regionalGAM',
+                            GamFamily='poisson', CompltSeason=TRUE, SelectYear=NULL, SpeedGam=TRUE, OptiGam=TRUE, ...) {
 
-        check_data.table()
+        check_package('data.table')
         names(ts_season_count) <- toupper(names(ts_season_count))
-        check_names(ts_season_count,c("COMPLT_SEASON","M_YEAR","SITE_ID","SPECIES","DATE","DAY_SINCE","M_SEASON","COUNT","ANCHOR"))
+        check_names(ts_season_count,c("COMPLT_SEASON", "M_YEAR", "SITE_ID", "SPECIES", "DATE", "WEEK", "WEEK_DAY", "DAY_SINCE", "M_SEASON", "COUNT", "ANCHOR"))
 
         if(isTRUE(CompltSeason)){
-            ts_season_count <- ts_season_count[COMPLT_SEASON==1]
+            ts_season_count <- ts_season_count[COMPLT_SEASON == 1]
         }
 
         if(exists("f_pheno")){rm(f_pheno)}
 
         if(is.null(SelectYear)){
-            year_series <- ts_season_count[,unique(as.integer(M_YEAR))]
+            year_series <- ts_season_count[, unique(as.integer(M_YEAR))]
         } else {
-            year_series <- ts_season_count[M_YEAR %in% SelectYear,unique(as.integer(M_YEAR))]
+            year_series <- ts_season_count[M_YEAR %in% SelectYear, unique(as.integer(M_YEAR))]
         }
 
         for (y in year_series) {
 
-            dataset_y <- ts_season_count[as.integer(M_YEAR)==y, .(SPECIES,SITE_ID,DATE,DAY_SINCE,M_YEAR,M_SEASON,COUNT,ANCHOR)]
-            dataset_y[,trimDAYNO:=DAY_SINCE-min(DAY_SINCE)+1]
+            dataset_y <- ts_season_count[as.integer(M_YEAR) == y, .(SPECIES, SITE_ID, DATE, WEEK, WEEK_DAY, DAY_SINCE, M_YEAR, M_SEASON, COUNT, ANCHOR)]
+            dataset_y[, trimDAYNO := DAY_SINCE - min(DAY_SINCE) + 1]
 
             ## filter for site with at least 3 visits and 2 occurrences
-            visit_occ_site <- merge(dataset_y[!is.na(COUNT) & ANCHOR==0L,.N,by=SITE_ID],dataset_y[!is.na(COUNT) & ANCHOR==0L & COUNT>0,.N,by=SITE_ID],by="SITE_ID",all=TRUE)
-            dataset_y <- data.table::copy(dataset_y[SITE_ID %in% visit_occ_site[N.x>=MinVisit&N.y>=MinOccur,SITE_ID]])
+            visit_occ_site <- merge(dataset_y[!is.na(COUNT) & ANCHOR == 0L, .N, by=SITE_ID], dataset_y[!is.na(COUNT) & ANCHOR == 0L & COUNT > 0, .N, by=SITE_ID], by="SITE_ID", all=TRUE)
+            dataset_y <- data.table::copy(dataset_y[SITE_ID %in% visit_occ_site[N.x >= MinVisit & N.y >= MinOccur, SITE_ID]])
 
-            if(dataset_y[,.N]<=MinNbrSite){
-                dataset_y <- ts_season_count[as.integer(M_YEAR)==y, .(SPECIES,DATE,DAY_SINCE,M_YEAR,M_SEASON)]
-                dataset_y[,trimDAYNO:=DAY_SINCE-min(DAY_SINCE)+1]
-                f_curve <- dataset_y[,NM:=NA]
-                data.table::setkey(f_curve,SPECIES,DAY_SINCE)
+            if(dataset_y[, .N] <= MinNbrSite){
+                dataset_y <- ts_season_count[as.integer(M_YEAR) == y, .(SPECIES, DATE, WEEK, WEEK_DAY, DAY_SINCE, M_YEAR, M_SEASON)]
+                dataset_y[, trimDAYNO := DAY_SINCE - min(DAY_SINCE) + 1]
+                f_curve <- dataset_y[, NM := NA]
+                data.table::setkey(f_curve, SPECIES, DAY_SINCE)
                 f_curve <- unique(f_curve)
-                print(paste("You have not enough sites with observations for estimating the flight curve for species",as.character(dataset_y$SPECIES[1]),"in", dataset_y$M_YEAR[1]))
+                print(paste("You have not enough sites with observations for estimating the flight curve for species", as.character(dataset_y$SPECIES[1]), "in", dataset_y$M_YEAR[1]))
             }else{
                 if(FcMethod=='regionalGAM'){
-                    f_curve_mod <- fit_gam(dataset_y,NbrSample,GamFamily,MaxTrial,SpeedGam=SpeedGam,OptiGam=OptiGam,...)
+                    f_curve_mod <- fit_gam(dataset_y, NbrSample, GamFamily, MaxTrial, SpeedGam=SpeedGam, OptiGam=OptiGam, ...)
                 }else{
                     print("ONLY the regionalGAM method is available so far!")
                 }
@@ -476,12 +182,12 @@ flight_curve <- function(ts_season_count,NbrSample=100,MinVisit=3,MinOccur=2,Min
             if ("f_pheno" %in% ls()) {
                 f_pheno <- rbind(f_pheno, f_curve_mod$f_curve)
                 f_model_2 <- list(f_curve_mod$f_model)
-                names(f_model_2) <- paste0('FlightModel_',dataset_y$M_YEAR[1])
-                f_model <- c(f_model,f_model_2)
+                names(f_model_2) <- paste0('FlightModel_', dataset_y$M_YEAR[1])
+                f_model <- c(f_model, f_model_2)
             }else {
                 f_pheno <- f_curve_mod$f_curve
                 f_model <- list(f_curve_mod$f_model) 
-                names(f_model) <- paste0('FlightModel_',dataset_y$M_YEAR[1])
+                names(f_model) <- paste0('FlightModel_', dataset_y$M_YEAR[1])
             }    
         }
 
