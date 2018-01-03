@@ -7,7 +7,11 @@
 # set you working directory and source the function script
 R --vanilla
 
-source('new_functions.r')
+## source('new_functions.r')
+
+source('rbms_index_modelling.r')
+source('rbms_toolbox.r')
+source('rbms_organize_data.r')
 
 ### load your data monitoring visit and butterfly count.
 m_visit <- data.table::fread("new_regionalgam/m_visit.csv", header=TRUE)
@@ -68,11 +72,18 @@ for(y in 2001:2005){
 legend('topright',legend=c(2000:2005),col=c(seq_along(c(2000:2005))),lty=1,bty='n')
 
 ## Use the output of the GAM model (flight curve) to impute values for missing counts, using a GLM 
-site_year_sp_count <- impute_count(ts_season_count,ts_flight_curve,FamilyGlm='nb')
+site_year_sp_count <- impute_count(ts_season_count, ts_flight_curve)
 
 ## plot the fitted values and the observed observation
-plot(site_year_sp_count$sp_ts_season_count[SITE_ID==2 & M_YEAR==2003,DATE],site_year_sp_count$sp_ts_season_count[SITE_ID==2 & M_YEAR==2003,FITTED],ylim=c(0,max(site_year_sp_count$sp_ts_season_count[SITE_ID==2 & M_YEAR==2003,COUNT_IMPUTED])),col='blue',type='l',main='Season 2003',xlab='Monitoring Month',ylab='Fitted Count')
-points(site_year_sp_count$sp_ts_season_count[SITE_ID==2 & M_YEAR==2003,DATE],site_year_sp_count$sp_ts_season_count[SITE_ID==2 & M_YEAR==2003,COUNT],col='red')
+unique(site_year_sp_count$sp_ts_season_count[,SITE_ID])
+s <- 10
+y <- 2003
+
+plot(site_year_sp_count$sp_ts_season_count[SITE_ID == s & M_YEAR == y, DATE], site_year_sp_count$sp_ts_season_count[SITE_ID == s & M_YEAR == y, FITTED],
+    ylim=c(0,max(site_year_sp_count$sp_ts_season_count[SITE_ID == s & M_YEAR == y,COUNT_IMPUTED])), col='blue', type='l', main=paste0('Site ', s, ', Season ', y), 
+    xlab='Monitoring Month', ylab='Fitted Count')
+points(site_year_sp_count$sp_ts_season_count[SITE_ID == s & M_YEAR == y, DATE], site_year_sp_count$sp_ts_season_count[SITE_ID == s & M_YEAR == y, COUNT],
+       col='red')
 
 ## Compute the total number of butterfly days - abundance index per site and year.
 butterfly_index <- butterfly_day(site_year_sp_count)
