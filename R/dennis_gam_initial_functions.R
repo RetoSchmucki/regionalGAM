@@ -1,6 +1,13 @@
 ### R-Script Adapted from script provided by the CEH, UK BY: Reto Schmucki [ reto.schmucki@mail.mcgill.ca]
 ### DATE: 14 July 2014 function to run two stage model in DENNIS et al. 2013
 
+
+.onAttach <- function(libname, pkgname) {
+  packageStartupMessage(" The regionalGAM package that is no longer maintained, \n use the new rbms package instead. \n
+   devtools::install_github(\"RetoSchmucki/rbms\", force=TRUE)")
+}
+
+
 #' year_day_func Function
 #' This function generate the full sequence of days, months and include the observation to that file.
 #' @param sp_data A data.frame with your observation.
