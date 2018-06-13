@@ -173,7 +173,7 @@ flight_curve <- function(your_dataset) {
     if("mgcv" %in% installed.packages() == "FALSE") {
         print("mgcv package is not installed.")
         x <- readline("Do you want to install it? Y/N")
-        if (x == 'Y') { 
+        if (x == 'Y') {
             install.packages("mgcv")
         }
         if (x == 'N') {
@@ -202,7 +202,7 @@ flight_curve <- function(your_dataset) {
             if(length(unique(sp_data_all$SITE))>1){
                 gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -1,
                     data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
-            } 
+            }
             else {
                 gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1,
                     data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
@@ -213,8 +213,8 @@ flight_curve <- function(your_dataset) {
                 sp_data_all <- year_day_func(dataset_y)
                 if (nsite > 200) {
                    sp_data_all <- sp_data_all[as.character(sp_data_all$SITE) %in% as.character(unique(dataset_y$SITE)[sample(1:nsite,
-                    200, replace = F)]), ]        
-                } 
+                    200, replace = F)]), ]
+                }
                 else {
                     sp_data_all <- sp_data_all
                 }
@@ -223,7 +223,7 @@ flight_curve <- function(your_dataset) {
                 if(length(unique(sp_data_all$SITE))>1){
                     gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -1,
                        data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
-                } 
+                }
                 else {
                     gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1,
                         data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
@@ -234,7 +234,7 @@ flight_curve <- function(your_dataset) {
                     sp_data_all[, "COUNT_IMPUTED"] <- NA
                     sp_data_all[is.na(sp_data_all$COUNT), "COUNT_IMPUTED"] <- NA
                     sp_data_all[, "NM"] <- NA
-                } 
+                }
                 else {
                     # Generate a list of values for all days from the additive model and use
                     # these value to fill the missing observations
@@ -249,7 +249,7 @@ flight_curve <- function(your_dataset) {
                         sp_data_all[, "FITTED"] <- NA
                         sp_data_all[, "COUNT_IMPUTED"] <- NA
                         sp_data_all[is.na(sp_data_all$COUNT), "COUNT_IMPUTED"] <- NA
-                        sp_data_all[, "NM"] <- NA    
+                        sp_data_all[, "NM"] <- NA
                     }
                     else {
                     sp_data_all[, "COUNT_IMPUTED"] <- sp_data_all$COUNT
@@ -267,7 +267,7 @@ flight_curve <- function(your_dataset) {
                     sp_data_all[, "NM"] <- sp_data_all$FITTED/sp_data_all$SITE_YR_FSUM
                     }
                 }
-            } 
+            }
             else {
                 # Generate a list of values for all days from the additive model and use
                 # these value to fill the missing observations
@@ -282,7 +282,7 @@ flight_curve <- function(your_dataset) {
                     sp_data_all[, "FITTED"] <- NA
                     sp_data_all[, "COUNT_IMPUTED"] <- NA
                     sp_data_all[is.na(sp_data_all$COUNT), "COUNT_IMPUTED"] <- NA
-                    sp_data_all[, "NM"] <- NA    
+                    sp_data_all[, "NM"] <- NA
                 }
                 else {
                 sp_data_all[, "COUNT_IMPUTED"] <- sp_data_all$COUNT
@@ -310,12 +310,12 @@ flight_curve <- function(your_dataset) {
             if (is.na(flight_curve$nm[1]))  next()
             if ("flight_pheno" %in% ls()) {
                 flight_pheno <- rbind(flight_pheno, flight_curve)
-            } 
+            }
             else {
             flight_pheno <- flight_curve
             }
         }  # end of year loop
-    } 
+    }
     else {
         y <- unique(dataset$YEAR)
         dataset_y <- dataset[dataset$YEAR == y, ]
@@ -325,7 +325,7 @@ flight_curve <- function(your_dataset) {
         if (nsite > 200) {
             sp_data_all <- sp_data_all[as.character(sp_data_all$SITE) %in% as.character(unique(dataset_y$SITE)[sample(1:nsite,
             200, replace = F)]), ]
-        } 
+        }
         else {
             sp_data_all <- sp_data_all
         }
@@ -334,7 +334,7 @@ flight_curve <- function(your_dataset) {
         if(length(unique(sp_data_all$SITE))>1){
             gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) -1,
             data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
-        } 
+        }
         else {
             gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1,
             data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
@@ -346,7 +346,7 @@ flight_curve <- function(your_dataset) {
             if (nsite > 200) {
                 sp_data_all <- sp_data_all[as.character(sp_data_all$SITE) %in% as.character(unique(dataset_y$SITE)[sample(1:nsite,
                 200, replace = F)]), ]
-            } 
+            }
             else {
                 sp_data_all <- sp_data_all
             }
@@ -355,7 +355,7 @@ flight_curve <- function(your_dataset) {
             if(length(unique(sp_data_all$SITE))>1){
                 gam_obj_site <- try(mgcv::bam(COUNT ~ s(trimDAYNO, bs = "cr") + as.factor(SITE) - 1,
                 data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
-            } 
+            }
             else {
                 gam_obj_site <- try(mgcv::gam(COUNT ~ s(trimDAYNO, bs = "cr")  -1,
                 data = sp_data_all, family = poisson(link = "log")), silent = TRUE)
@@ -366,7 +366,7 @@ flight_curve <- function(your_dataset) {
                 sp_data_all[, "COUNT_IMPUTED"] <- NA
                 sp_data_all[is.na(sp_data_all$COUNT), "COUNT_IMPUTED"] <- NA
                 sp_data_all[, "NM"] <- NA
-            } 
+            }
             else {
                 # Generate a list of values for all days from the additive model and use
                 # these value to fill the missing observations
@@ -381,7 +381,7 @@ flight_curve <- function(your_dataset) {
                     sp_data_all[, "FITTED"] <- NA
                     sp_data_all[, "COUNT_IMPUTED"] <- NA
                     sp_data_all[is.na(sp_data_all$COUNT), "COUNT_IMPUTED"] <- NA
-                    sp_data_all[, "NM"] <- NA    
+                    sp_data_all[, "NM"] <- NA
                 }
                 else {
                     sp_data_all[, "COUNT_IMPUTED"] <- sp_data_all$COUNT
@@ -397,9 +397,9 @@ flight_curve <- function(your_dataset) {
                     all = TRUE, sort = FALSE)
                     # Calculate normalized values
                     sp_data_all[, "NM"] <- sp_data_all$FITTED/sp_data_all$SITE_YR_FSUM
-                }          
+                }
             }
-        } 
+        }
         else {
             # Generate a list of values for all days from the additive model and use
             # these value to fill the missing observations
@@ -414,7 +414,7 @@ flight_curve <- function(your_dataset) {
                 sp_data_all[, "FITTED"] <- NA
                 sp_data_all[, "COUNT_IMPUTED"] <- NA
                 sp_data_all[is.na(sp_data_all$COUNT), "COUNT_IMPUTED"] <- NA
-                sp_data_all[, "NM"] <- NA    
+                sp_data_all[, "NM"] <- NA
             }
             else {
                 sp_data_all[, "COUNT_IMPUTED"] <- sp_data_all$COUNT
@@ -445,7 +445,7 @@ flight_curve <- function(your_dataset) {
             # bind if exist else create
             if ("flight_pheno" %in% ls()) {
                 flight_pheno <- rbind(flight_pheno, flight_curve)
-            } 
+            }
             else {
                 flight_pheno <- flight_curve
             }
@@ -506,6 +506,7 @@ for (y in sample_year) {
 
     # remove samples outside the monitoring window
     sp_data_site$COUNT[sp_data_site$nm==0] <- NA
+    sp_data_site <- sp_data_site[sp_data_site$SITE %in% unique(sp_data_site[!is.na(sp_data_site$COUNT), "SITE"]), ]
 
     # Compute the regional GAM index
 
@@ -584,6 +585,7 @@ for (y in sample_year) {
 
     # remove samples outside the monitoring window
     sp_data_site$COUNT[sp_data_site$nm==0] <- NA
+    sp_data_site <- sp_data_site[sp_data_site$SITE %in% unique(sp_data_site[!is.na(sp_data_site$COUNT), "SITE"]), ]
 
     # Compute the regional GAM index
     if(length(unique(sp_data_site$SITE))>1){
