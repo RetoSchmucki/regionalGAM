@@ -5,10 +5,16 @@
 \title{flight_curve Function
 This function compute the flight curve across and years}
 \usage{
-flight_curve(your_dataset)
+flight_curve(your_dataset, GamFamily = "nb", MinVisit = 3, MinOccur = 2)
 }
 \arguments{
 \item{your_dataset}{A data.frame containing original species count data. The data format is a csv (comma "," separated) with 6 columns with headers, namely "species","transect_id","visit_year","visit_month","visit_day","sp_count"}
+
+\item{GamFamily}{string setting the distribution of the error term in the GAM, default='nb', but can be 'poisson' or 'quasipoisson'.}
+
+\item{MinVisit}{integer setting the minimum number of visit required for a site to included in the computation, default=3.}
+
+\item{MinOccur}{integer setting the minimum number of positive records (e.g. >= 1) observed over the year in a site default=2.}
 }
 \description{
 flight_curve Function
