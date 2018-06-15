@@ -32,16 +32,16 @@ data("gatekeeper_CM")
 head(gatekeeper_CM)
 ```
 
-The `gatekeeper_CM` data set contains counts for x sites. From this dataset we can compute the regional flight curve that define the expected pattern of abundance of adult butterfly in this specific region. The dataset provided to the function `fligth_curve` must correspond the specific region. In a near future, I am planning to implement additional functions that will facilitate will divide your data into specific regions, stay tuned. 
+The `gatekeeper_CM` data set contains counts for x sites. From this dataset we can compute the regional flight curve that define the expected pattern of abundance of adult butterfly in this specific region. The dataset provided to the function `fligth_curve` must correspond the specific region. In a near future, I am planning to implement additional functions that will facilitate will divide your data into specific regions, stay tuned.
 
-Note that the data set is structured with six columns, defining 1. species name, 2. monitoring site, 3. observation year, 4. observation month, 5. observation day, and 6. butterfly count. The extra column, TREND, found in the `gatekeeper_CM` data is not required in the `flight_curve()` function. 
+Note that the data set is structured with six columns, defining 1. species name, 2. monitoring site, 3. observation year, 4. observation month, 5. observation day, and 6. butterfly count. The extra column, TREND, found in the `gatekeeper_CM` data is not required in the `flight_curve()` function.
 
-```R	
+```R
 dataset1 <- gatekeeper_CM[,c("SPECIES","SITE","YEAR","MONTH","DAY","COUNT")]
 
 # compute the annual flight curve, you might get yourself a coffee as this might take some time.
-pheno <- flight_curve(dataset1)
-	
+pheno <- flight_curve(dataset1, GamFamily = 'nb', MinVisit = 3, MinOccur = 2)
+
 # plot pheno for year 2005
 plot(pheno$DAYNO[pheno$year==2005],pheno$nm[pheno$year==2005],pch=19,cex=0.7,type='o',col='red',xlab="day",ylab="relative abundance")
 ```
@@ -50,8 +50,13 @@ We can now use the annual flight curve contained in the object `pheno` to impute
 
 ```R
 dataset2 <- gatekeeper_CM[gatekeeper_CM$TREND==1,c("SPECIES","SITE","YEAR","MONTH","DAY","COUNT")]
-	
+pheno1 <- pheno[pheno$year!=2009,]
+data.index <- abundance_index(dataset2, pheno1)
 data.index <- abundance_index(dataset2, pheno)
+
+# note that if the flight curve of one year is missing, the index will not be computed
+pheno_missing <- pheno[pheno$year!=2009,]
+data.index_missing <- abundance_index(dataset2, pheno_missing)
 ```
 
 With the abundance index computed for each site and monitoring year, we can now compute a collated index for each year and estimate the temporal trend. This can be done with the software [TRIM](http://www.cbs.nl/en-GB/menu/themas/natuur-milieu/methoden/trim/default.htm), or in R as shown here. Note that this is a short and minimalist example for trend estimation and more step might be needed to produce sound trend analysis (e.g. stratification per habitat type, bootstrap confidence interval estimation).
@@ -88,7 +93,7 @@ acf(residuals(mod1,type="normalized"))
 # adjust the model to account for autocorrelation in the residuals
 mod2 <- gls(col.index ~ year, correlation = corARMA(p=2))
 summary(mod2)
-	
+
 # check for remaining autocorrelation in the residuals
 acf(residuals(mod2,type="normalized"))
 
@@ -104,5 +109,3 @@ Here the temporal trend is the year effect estimated in your final model. Note t
 * Add GAM function with big-data optimization
 * Include flexibility in start and end day definition
 * Include a map object for bioclimatic regions to build regional datasets
-
-
