@@ -505,7 +505,7 @@ for (y in sample_year) {
     year_pheno <- flight_pheno[flight_pheno$year == y, ]
 
     if (nrow(year_pheno) == 0 | length(year_pheno[is.na(year_pheno$nm),'nm']) > 0) {
-      print(paste("Found no reliable flight curve available for",sp_data_site$SPECIES[1],"at year", y))
+      print(paste("Found no reliable flight curve available for",dataset$SPECIES[1],"at year", y))
       next
     }
 
@@ -589,7 +589,7 @@ for (y in sample_year) {
     year_pheno <- flight_pheno[flight_pheno$year == y, ]
 
     if (nrow(year_pheno) == 0 | length(year_pheno[is.na(year_pheno$nm),'nm']) > 0) {
-      stop(paste("Found no reliable flight curve available for",sp_data_site$SPECIES[1],"at year", y))
+      stop(paste("Found no reliable flight curve available for",dataset$SPECIES[1],"at year", y))
     }
 
     dataset_y <- dataset[dataset$YEAR == y, ]
