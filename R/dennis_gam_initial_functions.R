@@ -171,7 +171,7 @@ trap_index = function(sp_data, data_col = "IMP", time_col = "DAYNO", by_col = c(
 #' flight_curve()
 
 
-flight_curve <- function(your_dataset, GamFamily = 'nb', MinVisit = 3, MinOccur = 2) {
+flight_curve <- function(your_dataset, GamFamily = 'nb', MinVisit = 2, MinOccur = 1) {
 
     if("mgcv" %in% installed.packages() == "FALSE") {
         print("mgcv package is not installed.")
@@ -581,7 +581,7 @@ for (y in sample_year) {
     year_pheno <- flight_pheno[flight_pheno$year == y, ]
 
     if (nrow(year_pheno) == 0 | length(year_pheno[is.na(year_pheno$nm),'nm']) > 0) {
-      print(paste("Found no reliable flight curve available for",sp_data_site$SPECIES[1],"at year", y))
+      stop(paste("Found no reliable flight curve available for",sp_data_site$SPECIES[1],"at year", y))
     }
 
     dataset_y <- dataset[dataset$YEAR == y, ]
