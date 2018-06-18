@@ -3,7 +3,7 @@
 
 
 .onAttach <- function(libname, pkgname) {
-  packageStartupMessage(" This is version v.1.5.0 \"Dream catcher\" \n While the regionalGAM package that is still maintained, \n I am actively developping the new rbms package this is still in a beta version. \n
+  packageStartupMessage(" This is version v.1.5.0 \"Dream catcher\" \n While the regionalGAM package that is still maintained, \n I am actively developping the new rbms package, still in its beta version. \n
    devtools::install_github(\"RetoSchmucki/rbms\", force=TRUE)")
 }
 
