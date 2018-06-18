@@ -200,7 +200,7 @@ flight_curve <- function(your_dataset, GamFamily = 'nb', MinVisit = 2, MinOccur 
             dataset_y <- dataset_y[dataset_y$SITE %in% vis$SITE[vis$x >= MinVisit], ]
             nsite <- length(unique(dataset_y$SITE))
             if (nsite < 1) {
-              print(paste("No sites with sufficient visits and occurence, MinOccur:", MinOccur, " MinVisit: ", MinVisit, " for " ,sp_data_all$SPECIES[1],"at year", y))
+              print(paste("No sites with sufficient visits and occurence, MinOccur:", MinOccur, " MinVisit: ", MinVisit, " for " , dataset_y$SPECIES[1],"at year", y))
               next
             }
             # Determine missing days and add to dataset
@@ -339,7 +339,7 @@ flight_curve <- function(your_dataset, GamFamily = 'nb', MinVisit = 2, MinOccur 
         dataset_y <- dataset_y[dataset_y$SITE %in% vis$SITE[vis$x >= MinVisit], ]
         nsite <- length(unique(dataset_y$SITE))
         if (nsite < 1) {
-          stop(paste("No sites with sufficient visits and occurence, MinOccur:", MinOccur, " MinVisit: ", MinVisit, " for " ,sp_data_all$SPECIES[1],"at year", y))
+          stop(paste("No sites with sufficient visits and occurence, MinOccur:", MinOccur, " MinVisit: ", MinVisit, " for " ,dataset_y$SPECIES[1],"at year", y))
         }
         # Determine missing days and add to dataset
         sp_data_all <- year_day_func(dataset_y)
