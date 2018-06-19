@@ -183,7 +183,9 @@ flight_curve <- function(your_dataset, GamFamily = 'nb', MinVisit = 2, MinOccur 
             stop("flight curve can not be computed without the mgcv package, sorry")
         }
     }
+
     flight_pheno <- data.frame()
+
     your_dataset$DAYNO <- strptime(paste(your_dataset$DAY, your_dataset$MONTH,
         your_dataset$YEAR, sep = "/"), "%d/%m/%Y")$yday + 1
     dataset <- your_dataset[, c("SPECIES", "SITE", "YEAR", "MONTH",
@@ -323,12 +325,9 @@ flight_curve <- function(your_dataset, GamFamily = 'nb', MinVisit = 2, MinOccur 
             flight_curve <- flight_curve[order(flight_curve$DAYNO), ]
             # bind if exist else create
             if (is.na(flight_curve$nm[1]))  next()
-            #if ("flight_pheno" %in% ls()) {
-                flight_pheno <- rbind(flight_pheno, flight_curve)
-            #}
-            #else {
-            #flight_pheno <- flight_curve
-            #}
+
+            flight_pheno <- rbind(flight_pheno, flight_curve)
+
         }  # end of year loop
     }
     else {
@@ -461,19 +460,9 @@ flight_curve <- function(your_dataset, GamFamily = 'nb', MinVisit = 2, MinOccur 
         nm = sp_data_filled$NM)[!duplicated(paste(sp_data_filled$YEAR,
         sp_data_filled$DAYNO, sep = "_")), ]
         flight_curve <- flight_curve[order(flight_curve$DAYNO), ]
-        #if (is.na(flight_curve$nm[1])){
-        #    flight_pheno <- data.frame()
-        #}
 
-      #else {
-            # bind if exist else create
-      #      if ("flight_pheno" %in% ls()) {
-                flight_pheno <- rbind(flight_pheno, flight_curve)
-      #      }
-      #      else {
-      #          flight_pheno <- flight_curve
-      #      }
-      #  }
+        flight_pheno <- rbind(flight_pheno, flight_curve)
+
     }
     return(flight_pheno)
 }
@@ -499,7 +488,7 @@ dataset <- your_dataset[, c("SPECIES", "SITE", "YEAR", "MONTH",
 
 sample_year <- unique(dataset$YEAR)
 sample_year <- sample_year[order(sample_year)]
-
+cumullated_indices <- data.frame()
 
 if (length(sample_year)>1){
 
@@ -576,13 +565,7 @@ for (y in sample_year) {
     names(cumu_index) <- c("SITE", "SPECIES", "YEAR", "regional_gam", "prop_pheno_sampled")
 
     cumu_index <- cumu_index[order(cumu_index$SITE), ]
-
-    # bind if exist else create
-    if ("cumullated_indices" %in% ls()) {
-        cumullated_indices <- rbind(cumullated_indices, cumu_index)
-    } else {
-        cumullated_indices <- cumu_index
-    }
+    cumullated_indices <- rbind(cumullated_indices, cumu_index)
 
 }  # end of year loop
 
@@ -658,13 +641,7 @@ for (y in sample_year) {
     names(cumu_index) <- c("SITE", "SPECIES", "YEAR", "regional_gam", "prop_pheno_sampled")
 
     cumu_index <- cumu_index[order(cumu_index$SITE), ]
-
-    # bind if exist else create
-    if ("cumullated_indices" %in% ls()) {
-        cumullated_indices <- rbind(cumullated_indices, cumu_index)
-    } else {
-        cumullated_indices <- cumu_index
-    }
+    cumullated_indices <- rbind(cumullated_indices, cumu_index)
 
 }
 
