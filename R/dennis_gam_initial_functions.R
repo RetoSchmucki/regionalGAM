@@ -184,7 +184,6 @@ flight_curve <- function(your_dataset, GamFamily = 'nb', MinVisit = 2, MinOccur 
         }
     }
     flight_pheno <- data.frame()
-    
     your_dataset$DAYNO <- strptime(paste(your_dataset$DAY, your_dataset$MONTH,
         your_dataset$YEAR, sep = "/"), "%d/%m/%Y")$yday + 1
     dataset <- your_dataset[, c("SPECIES", "SITE", "YEAR", "MONTH",
